@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import sqlite3
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 try:
@@ -29,13 +29,22 @@ def init_database() -> None:
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tracks'")
-        if cursor.fetchone() is None:
+        table_exists = cursor.fetchone() is not None
+
+        if not table_exists:
             Base.metadata.create_all(engine)
         else:
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tracks'")
-            if cursor.fetchone() is not None:
-                cursor.execute("DROP TABLE tracks")
-            Base.metadata.create_all(engine)
+            cursor.execute("PRAGMA table_info(tracks)")
+            existing_columns = {row[1] for row in cursor.fetchall()}
+
+            if "file_hash" not in existing_columns:
+                with engine.connect() as connection:
+                    connection.execute(text("ALTER TABLE tracks ADD COLUMN file_hash VARCHAR"))
+
+            if "status" not in existing_columns:
+                with engine.connect() as connection:
+                    connection.execute(text("ALTER TABLE tracks ADD COLUMN status VARCHAR DEFAULT 'ok'"))
+
         conn.commit()
     finally:
         conn.close()

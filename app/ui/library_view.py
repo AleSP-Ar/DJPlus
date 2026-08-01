@@ -4,38 +4,75 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QTableWidget,
     QTableWidgetItem,
+    QLabel
 )
 
-try:
-    from ..database import SessionLocal
-    from ..models import Track
-except ImportError:  # pragma: no cover - fallback for direct execution
-    from database import SessionLocal
-    from models import Track
+from PySide6.QtCore import Qt
+
+from database import SessionLocal
+from models import Track
 
 
 class LibraryView(QWidget):
+
     def __init__(self):
         super().__init__()
 
         self.layout = QVBoxLayout()
 
+        self.counter = QLabel(
+            "Biblioteca: cargando..."
+        )
+
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Buscar artista o título...")
+        self.search.setPlaceholderText(
+            "Buscar artista, título o álbum..."
+        )
 
         self.table = QTableWidget()
 
+        self.layout.addWidget(self.counter)
         self.layout.addWidget(self.search)
         self.layout.addWidget(self.table)
 
         self.setLayout(self.layout)
 
-        self.search.textChanged.connect(self.filter_tracks)
+        self.search.textChanged.connect(
+            self.filter_tracks
+        )
 
         self.load_tracks()
 
+    def setup_table(self):
+
+        self.table.setColumnCount(8)
+
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Artista",
+                "Título",
+                "Álbum",
+                "BPM",
+                "Key",
+                "Duración",
+                "Rating",
+                "Ruta"
+            ]
+        )
+
+        self.table.setSortingEnabled(True)
+
+        self.table.horizontalHeader().setStretchLastSection(True)
+
     def load_tracks(self):
+
         session = SessionLocal()
+
+        total = session.query(Track).count()
+
+        self.counter.setText(
+            f"Biblioteca: {total} pistas"
+        )
 
         tracks = (
             session.query(Track)
@@ -43,45 +80,68 @@ class LibraryView(QWidget):
             .all()
         )
 
-        self.table.setRowCount(len(tracks))
-        self.table.setColumnCount(5)
+        self.setup_table()
 
-        self.table.setHorizontalHeaderLabels(
-            [
-                "Artista",
-                "Título",
-                "BPM",
-                "Key",
-                "Duración",
-            ]
-        )
-
-        for row, track in enumerate(tracks):
-            self.table.setItem(row, 0, QTableWidgetItem(track.artist or ""))
-            self.table.setItem(row, 1, QTableWidgetItem(track.title or ""))
-            self.table.setItem(row, 2, QTableWidgetItem(str(track.bpm or "")))
-            self.table.setItem(row, 3, QTableWidgetItem(track.key or ""))
-            self.table.setItem(row, 4, QTableWidgetItem(str(track.duration or "")))
+        self.fill_table(tracks)
 
         session.close()
 
+    def fill_table(self, tracks):
+
+        self.table.setRowCount(
+            len(tracks)
+        )
+
+        for row, track in enumerate(tracks):
+
+            values = [
+                track.artist or "",
+                track.title or "",
+                track.album or "",
+                str(track.bpm or ""),
+                track.key or "",
+                self.format_duration(track.duration),
+                str(track.rating or ""),
+                track.filepath or ""
+            ]
+
+            for column, value in enumerate(values):
+
+                item = QTableWidgetItem(value)
+
+                self.table.setItem(
+                    row,
+                    column,
+                    item
+                )
+
+        self.table.resizeColumnsToContents()
+
     def filter_tracks(self, text):
+
         session = SessionLocal()
 
         tracks = (
             session.query(Track)
             .filter(
                 (Track.artist.ilike(f"%{text}%")) |
-                (Track.title.ilike(f"%{text}%"))
+                (Track.title.ilike(f"%{text}%")) |
+                (Track.album.ilike(f"%{text}%"))
             )
             .limit(500)
             .all()
         )
 
-        self.table.setRowCount(len(tracks))
-
-        for row, track in enumerate(tracks):
-            self.table.setItem(row, 0, QTableWidgetItem(track.artist or ""))
-            self.table.setItem(row, 1, QTableWidgetItem(track.title or ""))
+        self.fill_table(tracks)
 
         session.close()
+
+    def format_duration(self, seconds):
+
+        if not seconds:
+            return ""
+
+        minutes = int(seconds // 60)
+        seconds = int(seconds % 60)
+
+        return f"{minutes}:{seconds:02d}"
