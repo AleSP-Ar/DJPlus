@@ -6,8 +6,8 @@ try:
     from .database import init_database
     from .ui.main_window import MainWindow
 except ImportError:  # pragma: no cover - fallback for direct execution
-    from database import init_database
-    from ui.main_window import MainWindow
+    from app.database import init_database
+    from app.ui.main_window import MainWindow
 
 
 def main():

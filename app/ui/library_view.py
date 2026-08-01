@@ -2,21 +2,27 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QLineEdit,
-    QTableWidget,
-    QTableWidgetItem,
-    QLabel
+    QTableView,
+    QLabel,
+    QHeaderView,
 )
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSortFilterProxyModel
 
-from database import SessionLocal
-from models import Track
+try:
+    from ..repository.track_repository import TrackRepository
+    from ..models.track_table_model import TrackTableModel
+except ImportError:  # pragma: no cover - fallback for direct execution
+    from app.repository.track_repository import TrackRepository
+    from app.ui.models.track_table_model import TrackTableModel
 
 
 class LibraryView(QWidget):
 
     def __init__(self):
         super().__init__()
+
+        self.repository = TrackRepository()
 
         self.layout = QVBoxLayout()
 
@@ -29,11 +35,33 @@ class LibraryView(QWidget):
             "Buscar artista, título o álbum..."
         )
 
-        self.table = QTableWidget()
+        self.table = QTableView()
+        self.model = TrackTableModel([])
+
+        self.proxy = QSortFilterProxyModel()
+        self.proxy.setSourceModel(self.model)
+        self.proxy.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.proxy.setFilterKeyColumn(-1)
+
+        self.table.setModel(self.proxy)
+        self.table.setSortingEnabled(True)
+
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeToContents)
+        header.setStretchLastSection(True)
+
+        self.table.setSelectionBehavior(QTableView.SelectRows)
+        self.table.setAlternatingRowColors(True)
+
+        selection = self.table.selectionModel()
+        selection.selectionChanged.connect(self.on_selection_changed)
+
+        self.info_label = QLabel("Selecciona una pista")
 
         self.layout.addWidget(self.counter)
         self.layout.addWidget(self.search)
         self.layout.addWidget(self.table)
+        self.layout.addWidget(self.info_label)
 
         self.setLayout(self.layout)
 
@@ -45,103 +73,40 @@ class LibraryView(QWidget):
 
     def setup_table(self):
 
-        self.table.setColumnCount(8)
-
-        self.table.setHorizontalHeaderLabels(
-            [
-                "Artista",
-                "Título",
-                "Álbum",
-                "BPM",
-                "Key",
-                "Duración",
-                "Rating",
-                "Ruta"
-            ]
-        )
-
         self.table.setSortingEnabled(True)
-
-        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.resizeColumnsToContents()
 
     def load_tracks(self):
 
-        session = SessionLocal()
-
-        total = session.query(Track).count()
+        total = self.repository.count_tracks()
 
         self.counter.setText(
             f"Biblioteca: {total} pistas"
         )
 
-        tracks = (
-            session.query(Track)
-            .limit(500)
-            .all()
-        )
+        tracks = self.repository.get_tracks(limit=500)
 
+        self.model.set_tracks(tracks)
         self.setup_table()
-
-        self.fill_table(tracks)
-
-        session.close()
-
-    def fill_table(self, tracks):
-
-        self.table.setRowCount(
-            len(tracks)
-        )
-
-        for row, track in enumerate(tracks):
-
-            values = [
-                track.artist or "",
-                track.title or "",
-                track.album or "",
-                str(track.bpm or ""),
-                track.key or "",
-                self.format_duration(track.duration),
-                str(track.rating or ""),
-                track.filepath or ""
-            ]
-
-            for column, value in enumerate(values):
-
-                item = QTableWidgetItem(value)
-
-                self.table.setItem(
-                    row,
-                    column,
-                    item
-                )
-
-        self.table.resizeColumnsToContents()
 
     def filter_tracks(self, text):
 
-        session = SessionLocal()
+        self.proxy.setFilterFixedString(text)
 
-        tracks = (
-            session.query(Track)
-            .filter(
-                (Track.artist.ilike(f"%{text}%")) |
-                (Track.title.ilike(f"%{text}%")) |
-                (Track.album.ilike(f"%{text}%"))
+    def on_selection_changed(self, selected, deselected):
+
+        indexes = selected.indexes()
+
+        if not indexes:
+            self.info_label.setText("Selecciona una pista")
+            return
+
+        proxy_index = indexes[0]
+        source_index = self.proxy.mapToSource(proxy_index)
+
+        track = self.model.track_at(source_index.row())
+
+        if track:
+            self.info_label.setText(
+                f"{track.artist or 'Desconocido'} - {track.title or 'Sin título'}"
             )
-            .limit(500)
-            .all()
-        )
-
-        self.fill_table(tracks)
-
-        session.close()
-
-    def format_duration(self, seconds):
-
-        if not seconds:
-            return ""
-
-        minutes = int(seconds // 60)
-        seconds = int(seconds % 60)
-
-        return f"{minutes}:{seconds:02d}"

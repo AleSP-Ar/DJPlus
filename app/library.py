@@ -1,9 +1,9 @@
 try:
     from .database import SessionLocal
-    from .models import Track
+    from .database.models import Track
 except ImportError:  # pragma: no cover - fallback for direct execution
-    from database import SessionLocal
-    from models import Track
+    from app.database import SessionLocal
+    from app.database.models import Track
 
 from sqlalchemy import or_
 
