@@ -24,6 +24,9 @@ class Track(Base):
 
     duration = Column(Float, nullable=True)
 
+    file_hash = Column(String, nullable=True)
+    status = Column(String, default="ok")
+
     energy = Column(Integer, default=0)
     rating = Column(Integer, default=0)
 
