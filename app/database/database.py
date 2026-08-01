@@ -12,9 +12,11 @@ except ImportError:  # pragma: no cover - fallback for direct execution
     from models import Base
 
 
-DATABASE_URL = "sqlite:///data/djplus.db"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATABASE_PATH = PROJECT_ROOT / "data" / "djplus.db"
+DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
 
-Path("data").mkdir(parents=True, exist_ok=True)
+DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 engine = create_engine(
     DATABASE_URL,
@@ -25,7 +27,7 @@ SessionLocal = sessionmaker(bind=engine)
 
 
 def init_database() -> None:
-    conn = sqlite3.connect("data/djplus.db")
+    conn = sqlite3.connect(DATABASE_PATH)
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tracks'")

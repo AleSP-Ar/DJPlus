@@ -11,7 +11,7 @@ from PySide6.QtCore import Qt, QSortFilterProxyModel
 
 try:
     from ..repository.track_repository import TrackRepository
-    from ..models.track_table_model import TrackTableModel
+    from .models.track_table_model import TrackTableModel
 except ImportError:  # pragma: no cover - fallback for direct execution
     from app.repository.track_repository import TrackRepository
     from app.ui.models.track_table_model import TrackTableModel
