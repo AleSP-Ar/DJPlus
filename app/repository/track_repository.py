@@ -1,5 +1,9 @@
+import os
+from pathlib import Path
+
 from app.database import SessionLocal
 from app.database.models import Track
+from app.services.filepath_normalization import normalize_filepath
 from sqlalchemy import or_
 
 
@@ -17,6 +21,49 @@ class TrackRepository:
 
     def get_all_tracks(self):
         return self.session.query(Track).all()
+
+    def get_by_filepath(self, filepath):
+        normalized = normalize_filepath(filepath)
+        candidates = {normalized}
+        try:
+            candidates.add(os.path.relpath(normalized, Path.cwd()))
+        except ValueError:
+            pass
+        return self.session.query(Track).filter(Track.filepath.in_(candidates)).one_or_none()
+
+    def create_from_import(self, filepath, metadata, file_size, modified_at, commit=True):
+        track = Track(
+            filepath=normalize_filepath(filepath),
+            title=metadata.title,
+            artist=metadata.artist,
+            album=metadata.album,
+            genre=metadata.genre,
+            bpm=metadata.bpm,
+            key=metadata.key,
+            duration=metadata.duration,
+            bitrate=metadata.bitrate,
+            sample_rate=metadata.sample_rate,
+            import_file_size=file_size,
+            import_file_modified_at=modified_at,
+        )
+        self.session.add(track)
+        self._finish(commit)
+        return track
+
+    def update_from_import(self, track, metadata, file_size, modified_at, commit=True):
+        track.title = metadata.title
+        track.artist = metadata.artist
+        track.album = metadata.album
+        track.genre = metadata.genre
+        track.bpm = metadata.bpm
+        track.key = metadata.key
+        track.duration = metadata.duration
+        track.bitrate = metadata.bitrate
+        track.sample_rate = metadata.sample_rate
+        track.import_file_size = file_size
+        track.import_file_modified_at = modified_at
+        self._finish(commit)
+        return track
 
     def _build_library_query(self, search, filters):
         query = self.session.query(Track)
@@ -103,3 +150,9 @@ class TrackRepository:
 
     def close(self):
         self.session.close()
+
+    def _finish(self, commit):
+        if commit:
+            self.session.commit()
+        else:
+            self.session.flush()

@@ -116,6 +116,68 @@ class CollectionRule(Base):
     collection = relationship("Collection", back_populates="rules")
 
 
+IMPORT_STATUSES = (
+    "pending",
+    "scanning",
+    "reading_metadata",
+    "imported",
+    "skipped",
+    "failed",
+    "cancelled",
+)
+
+
+class ImportJob(Base):
+    __tablename__ = "import_jobs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'scanning', 'reading_metadata', 'imported', "
+            "'skipped', 'failed', 'cancelled')",
+            name="ck_import_jobs_status",
+        ),
+        Index("ix_import_jobs_status", "status"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    status = Column(String(32), nullable=False, default="pending")
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    started_at = Column(DateTime, nullable=True)
+    finished_at = Column(DateTime, nullable=True)
+    total_items = Column(Integer, nullable=False, default=0)
+    processed_items = Column(Integer, nullable=False, default=0)
+    error_count = Column(Integer, nullable=False, default=0)
+
+    items = relationship(
+        "ImportItem",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        order_by="ImportItem.id",
+    )
+
+
+class ImportItem(Base):
+    __tablename__ = "import_items"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'scanning', 'reading_metadata', 'imported', "
+            "'skipped', 'failed', 'cancelled')",
+            name="ck_import_items_status",
+        ),
+        UniqueConstraint("job_id", "filepath", name="uq_import_items_job_filepath"),
+        Index("ix_import_items_job_status", "job_id", "status"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    job_id = Column(ForeignKey("import_jobs.id", ondelete="CASCADE"), nullable=False)
+    filepath = Column(String, nullable=False)
+    status = Column(String(32), nullable=False, default="pending")
+    error_message = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+
+    job = relationship("ImportJob", back_populates="items")
+
+
 class Track(Base):
     __tablename__ = "tracks"
 
@@ -124,6 +186,7 @@ class Track(Base):
     title = Column(String, nullable=False)
     artist = Column(String, nullable=False)
     album = Column(String, nullable=True)
+    genre = Column(String, nullable=True)
 
     filepath = Column(String, unique=True, nullable=False)
 
@@ -131,9 +194,13 @@ class Track(Base):
     key = Column(String, nullable=True)
 
     duration = Column(Float, nullable=True)
+    bitrate = Column(Integer, nullable=True)
+    sample_rate = Column(Integer, nullable=True)
 
     file_hash = Column(String, nullable=True)
     status = Column(String, default="ok")
+    import_file_size = Column(Integer, nullable=True)
+    import_file_modified_at = Column(DateTime, nullable=True)
 
     energy = Column(Integer, default=0)
     rating = Column(Integer, default=0)

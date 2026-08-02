@@ -66,3 +66,17 @@
 - Se documentaron arquitectura, módulos legacy, deuda técnica, riesgos y recomendaciones para v0.6.
 - Validación RC: 35 pruebas automatizadas correctas; benchmark visual sobre 8.529 pistas correcto.
 - El cierre y cualquier commit/tag de v0.5.0 quedan pendientes de aprobación explícita.
+
+## 2026-08-02 — Sprint 6.1: Import Engine
+
+- Se incorporaron ScannerService, MetadataService, ImportQueue, ImportService, ImportWorker y TrackImportService.
+- Las migraciones 0002 y 0003 agregan trabajos persistentes y snapshots de archivo.
+- Cada alta o actualización de pista se coordina con historial e ImportItem dentro de un Unit of Work.
+- El motor conserva rating, favoritos, playlists, collections e historial existentes.
+
+## 2026-08-02 — Sprint 6.1.7A: Release Hardening
+
+- Se centralizó la versión objetivo 0.6.1 y se actualizó la documentación de cierre.
+- El arranque de base usa exclusivamente migraciones versionadas.
+- Se normalizan filepaths para compatibilidad entre rutas relativas heredadas y rutas absolutas de importación.
+- Los errores persistidos se acotan a 500 caracteres y se agregó un benchmark reproducible del motor.
