@@ -9,10 +9,12 @@ from PySide6.QtWidgets import (
 try:
     from .library_view import LibraryView
     from .collection_panel import CollectionPanel
+    from .import_manager_panel import ImportManagerPanel
     from .playlist_panel import PlaylistPanel
 except ImportError:  # pragma: no cover - fallback for direct execution
     from ui.library_view import LibraryView
     from ui.collection_panel import CollectionPanel
+    from ui.import_manager_panel import ImportManagerPanel
     from ui.playlist_panel import PlaylistPanel
 
 
@@ -43,6 +45,9 @@ class MainWindow(QMainWindow):
         playlists = PlaylistPanel()
         playlists.setMaximumWidth(280)
         navigation.addWidget(playlists)
+        imports = ImportManagerPanel()
+        imports.setMaximumWidth(280)
+        navigation.addWidget(imports)
         content.addLayout(navigation)
 
         library = LibraryView()

@@ -80,3 +80,12 @@
 - El arranque de base usa exclusivamente migraciones versionadas.
 - Se normalizan filepaths para compatibilidad entre rutas relativas heredadas y rutas absolutas de importación.
 - Los errores persistidos se acotan a 500 caracteres y se agregó un benchmark reproducible del motor.
+
+## 2026-08-02 — Épica 1: AI Runtime Core (v0.8.0)
+
+- Se completaron `AssistantRuntime`, `PromptBuilder`, `ToolRegistry`, `ToolDispatcher`, `ConversationSession`, `ActionPipeline` y `ConfirmationManager`.
+- El Runtime es independiente de proveedores de IA: no conecta modelos, no accede a SQLite, ORM, repositorios, filesystem ni UI.
+- Las herramientas son allowlisted; las propuestas de acción son inmutables y las confirmaciones sólo devuelven decisiones tipadas, sin ejecutar cambios.
+- Se consolidó la arquitectura mediante cinco ADRs y pruebas de aislamiento, contratos públicos y grafo de dependencias acíclico.
+- Validación de cierre: 122 pruebas automatizadas, `compileall`, `git diff --check` y benchmark de apertura de biblioteca correctos.
+- Commit y tag `v0.8.0` quedan pendientes de aprobación explícita.

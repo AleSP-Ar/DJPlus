@@ -9,10 +9,12 @@
 | Biblioteca visual | Completado | v0.3 |
 | Arquitectura MVC inicial | Completado | v0.4 |
 | Biblioteca Profesional | Release Candidate | v0.5.0 |
+| Import Engine | Completado | v0.6.1 |
+| Épica 1 — AI Runtime Core | Preparado para cierre | v0.8.0 |
 
 ## Hito técnico actual
 
-DJPlus v0.5.0 está validado como Release Candidate: arquitectura, migraciones, pruebas de integración y auditoría completadas. El cierre, commit y tag quedan pendientes de aprobación explícita.
+DJPlus v0.8.0 está preparado para cierre: la Épica 1 AI Runtime Core completó Runtime, Prompt Builder, Tool Registry y Dispatcher, Conversation Session, Action Pipeline, Confirmation Manager, auditoría y ADRs. El commit y tag quedan pendientes de aprobación explícita.
 
 ## Desglose de sprints v0.5
 

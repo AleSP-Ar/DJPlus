@@ -91,6 +91,14 @@ class ImportRepository:
             .all()
         )
 
+    def list_jobs(self, limit=None):
+        query = self.session.query(ImportJob).order_by(ImportJob.created_at.desc(), ImportJob.id.desc())
+        if limit is not None:
+            if not isinstance(limit, int) or limit < 1:
+                raise ValueError("El límite de trabajos debe ser un entero positivo.")
+            query = query.limit(limit)
+        return query.all()
+
     def recover_incomplete_jobs(self, commit=True):
         jobs = self.list_incomplete_jobs()
         for job in jobs:
