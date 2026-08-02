@@ -1,40 +1,31 @@
-# DJPlus
+# DJPlus Documentation
 
-DJPlus es una herramienta local para gestionar una biblioteca musical de forma simple, rápida y pensada para DJs.
+DJPlus es una herramienta local de biblioteca musical orientada a DJs. Esta carpeta reúne la documentación técnica, de roadmap y de desarrollo del producto.
 
-## ¿Qué es DJPlus?
+## Estructura
 
-DJPlus permite:
-- escanear carpetas de música,
-- almacenar metadatos en SQLite,
-- explorar pistas desde una interfaz visual,
-- preparar la base para futuras funciones como edición de tracks, análisis BPM/Key, crates y preview player.
+- [architecture/](architecture/): decisiones de arquitectura y diseños de motores futuros.
+- [roadmap/](roadmap/): roadmap, hitos e historial de versiones.
+- [development/](development/): registro de desarrollo y estándares de contribución.
+- [diagrams/](diagrams/): diagramas de clases, secuencia y base de datos.
 
-## Objetivos
-
-- Organizar bibliotecas musicales locales.
-- Mantener una estructura clara y escalable.
-- Preparar el proyecto para evolucionar hacia un flujo DJ más completo.
-
-## Tecnologías
-
-- Python
-- PySide6 para la interfaz gráfica
-- SQLAlchemy para la base de datos
-- SQLite como motor local
-- Mutagen para leer metadatos de audio
-
-## Instalación
-
-1. Crear un entorno virtual.
-2. Instalar dependencias:
+## Inicio rápido
 
 ```bash
 pip install -r requirements.txt
+python -m app.main
 ```
 
-## Ejecución
+## Tecnología actual
 
-```bash
-python app/main.py
-```
+- Python
+- PySide6
+- SQLAlchemy
+- SQLite
+- Mutagen
+
+## Release candidate v0.5.0
+
+- [Arquitectura actual](architecture/DJPLUS_ARCHITECTURE.md)
+- [Diseño de migraciones y datos](architecture/DATABASE_DESIGN.md)
+- [Historial de desarrollo](development/DEVELOPMENT_LOG.md)

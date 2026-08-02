@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-import sqlite3
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 try:
-    from .models import Base
+    from .migrations import run_migrations
 except ImportError:  # pragma: no cover - fallback for direct execution
-    from models import Base
+    from migrations import run_migrations
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -23,33 +22,16 @@ engine = create_engine(
     echo=False,
 )
 
+
+@event.listens_for(engine, "connect")
+def enable_sqlite_foreign_keys(connection, _):
+    connection.execute("PRAGMA foreign_keys=ON")
+
 SessionLocal = sessionmaker(bind=engine)
 
 
 def init_database() -> None:
-    conn = sqlite3.connect(DATABASE_PATH)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tracks'")
-        table_exists = cursor.fetchone() is not None
-
-        if not table_exists:
-            Base.metadata.create_all(engine)
-        else:
-            cursor.execute("PRAGMA table_info(tracks)")
-            existing_columns = {row[1] for row in cursor.fetchall()}
-
-            if "file_hash" not in existing_columns:
-                with engine.connect() as connection:
-                    connection.execute(text("ALTER TABLE tracks ADD COLUMN file_hash VARCHAR"))
-
-            if "status" not in existing_columns:
-                with engine.connect() as connection:
-                    connection.execute(text("ALTER TABLE tracks ADD COLUMN status VARCHAR DEFAULT 'ok'"))
-
-        conn.commit()
-    finally:
-        conn.close()
+    run_migrations(engine)
 
 
 def init_db() -> None:

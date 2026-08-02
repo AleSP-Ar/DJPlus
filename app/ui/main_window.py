@@ -2,13 +2,18 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QLabel,
 )
 
 try:
     from .library_view import LibraryView
+    from .collection_panel import CollectionPanel
+    from .playlist_panel import PlaylistPanel
 except ImportError:  # pragma: no cover - fallback for direct execution
     from ui.library_view import LibraryView
+    from ui.collection_panel import CollectionPanel
+    from ui.playlist_panel import PlaylistPanel
 
 
 class MainWindow(QMainWindow):
@@ -30,7 +35,18 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("font-size: 20px; font-weight: 600;")
         layout.addWidget(title)
 
+        content = QHBoxLayout()
+        navigation = QVBoxLayout()
+        collections = CollectionPanel()
+        collections.setMaximumWidth(280)
+        navigation.addWidget(collections)
+        playlists = PlaylistPanel()
+        playlists.setMaximumWidth(280)
+        navigation.addWidget(playlists)
+        content.addLayout(navigation)
+
         library = LibraryView()
-        layout.addWidget(library)
+        content.addWidget(library, 1)
+        layout.addLayout(content, 1)
 
         self.setCentralWidget(central)

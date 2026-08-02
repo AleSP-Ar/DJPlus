@@ -7,13 +7,15 @@ from PySide6.QtWidgets import (
     QHeaderView,
 )
 
-from PySide6.QtCore import Qt, QSortFilterProxyModel
+from PySide6.QtCore import Qt
 
 try:
-    from ..repository.track_repository import TrackRepository
+    from ..services.library_service import LibraryService
+    from ..services.history_service import HistoryService
     from .models.track_table_model import TrackTableModel
 except ImportError:  # pragma: no cover - fallback for direct execution
-    from app.repository.track_repository import TrackRepository
+    from app.services.library_service import LibraryService
+    from app.services.history_service import HistoryService
     from app.ui.models.track_table_model import TrackTableModel
 
 
@@ -22,7 +24,8 @@ class LibraryView(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.repository = TrackRepository()
+        self.library_service = LibraryService()
+        self.history_service = HistoryService()
 
         self.layout = QVBoxLayout()
 
@@ -36,19 +39,15 @@ class LibraryView(QWidget):
         )
 
         self.table = QTableView()
-        self.model = TrackTableModel([])
+        self.model = TrackTableModel([], self.library_service.load_more)
 
-        self.proxy = QSortFilterProxyModel()
-        self.proxy.setSourceModel(self.model)
-        self.proxy.setFilterCaseSensitivity(Qt.CaseInsensitive)
-        self.proxy.setFilterKeyColumn(-1)
-
-        self.table.setModel(self.proxy)
-        self.table.setSortingEnabled(True)
+        self.table.setModel(self.model)
+        self.model.rowsInserted.connect(self.update_counter)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
         header.setStretchLastSection(True)
+        header.sectionClicked.connect(self.sort_tracks)
 
         self.table.setSelectionBehavior(QTableView.SelectRows)
         self.table.setAlternatingRowColors(True)
@@ -73,25 +72,38 @@ class LibraryView(QWidget):
 
     def setup_table(self):
 
-        self.table.setSortingEnabled(True)
         self.table.resizeColumnsToContents()
 
     def load_tracks(self):
-
-        total = self.repository.count_tracks()
-
-        self.counter.setText(
-            f"Biblioteca: {total} pistas"
-        )
-
-        tracks = self.repository.get_tracks(limit=500)
-
-        self.model.set_tracks(tracks)
+        tracks, has_more = self.library_service.load_library()
+        self.model.set_page(tracks, has_more)
+        self.update_counter()
         self.setup_table()
 
     def filter_tracks(self, text):
 
-        self.proxy.setFilterFixedString(text)
+        tracks, has_more = self.library_service.search(text)
+        self.model.set_page(tracks, has_more)
+        self.update_counter()
+
+    def sort_tracks(self, section):
+        columns = ("artist", "title", "album", "bpm", "key", "duration", "rating")
+        column = columns[section]
+        direction = "desc" if self.table.horizontalHeader().sortIndicatorOrder() == Qt.AscendingOrder else "asc"
+        tracks, has_more = self.library_service.sort(column, direction)
+        self.model.set_page(tracks, has_more)
+        self.update_counter()
+        self.table.horizontalHeader().setSortIndicator(section, Qt.DescendingOrder if direction == "desc" else Qt.AscendingOrder)
+
+    def update_counter(self, *_):
+        total = self.library_service.count_results()
+        loaded = self.model.rowCount()
+        self.counter.setText(f"Biblioteca: {loaded} de {total} pistas cargadas")
+
+    def closeEvent(self, event):
+        self.library_service.close()
+        self.history_service.close()
+        super().closeEvent(event)
 
     def on_selection_changed(self, selected, deselected):
 
@@ -101,12 +113,10 @@ class LibraryView(QWidget):
             self.info_label.setText("Selecciona una pista")
             return
 
-        proxy_index = indexes[0]
-        source_index = self.proxy.mapToSource(proxy_index)
-
-        track = self.model.track_at(source_index.row())
+        track = self.model.track_at(indexes[0].row())
 
         if track:
+            self.history_service.record_track_selected(track.id)
             self.info_label.setText(
                 f"{track.artist or 'Desconocido'} - {track.title or 'Sin título'}"
             )

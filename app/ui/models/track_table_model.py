@@ -1,4 +1,4 @@
-from PySide6.QtCore import QAbstractTableModel, Qt
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 
 
 class TrackTableModel(QAbstractTableModel):
@@ -13,9 +13,11 @@ class TrackTableModel(QAbstractTableModel):
         "Rating",
     ]
 
-    def __init__(self, tracks=None):
+    def __init__(self, tracks=None, load_more=None, has_more=False):
         super().__init__()
         self._tracks = tracks or []
+        self._load_more = load_more
+        self._has_more = has_more
 
     def rowCount(self, parent=None):
         return len(self._tracks)
@@ -69,6 +71,22 @@ class TrackTableModel(QAbstractTableModel):
         self.beginResetModel()
         self._tracks = tracks
         self.endResetModel()
+
+    def set_page(self, tracks, has_more):
+        self._has_more = has_more
+        self.set_tracks(tracks)
+
+    def canFetchMore(self, parent=None):
+        return self._has_more and self._load_more is not None
+
+    def fetchMore(self, parent=None):
+        tracks, self._has_more = self._load_more()
+        if not tracks:
+            return
+        start = len(self._tracks)
+        self.beginInsertRows(QModelIndex(), start, start + len(tracks) - 1)
+        self._tracks.extend(tracks)
+        self.endInsertRows()
 
     def track_at(self, row):
 

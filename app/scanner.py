@@ -4,9 +4,13 @@ from mutagen import File
 try:
     from .database import SessionLocal
     from .database.models import Track
+    from .services.history_service import HistoryService
+    from .repository.history_repository import HistoryRepository
 except ImportError:  # pragma: no cover - fallback for direct execution
     from app.database import SessionLocal
     from app.database.models import Track
+    from app.services.history_service import HistoryService
+    from app.repository.history_repository import HistoryRepository
 
 AUDIO_EXTENSIONS = (
     ".mp3",
@@ -20,6 +24,7 @@ AUDIO_EXTENSIONS = (
 def scan_folder(folder_path):
 
     session = SessionLocal()
+    history_service = HistoryService(repository=HistoryRepository(session=session))
 
     total = 0
     added = 0
@@ -86,6 +91,8 @@ def scan_folder(folder_path):
                 )
 
                 session.add(track)
+                session.flush()
+                history_service.record_track_added(track.id, commit=False)
                 added += 1
 
             except Exception as e:
