@@ -19,6 +19,10 @@ SQLAlchemy + SQLite
 
 The UI communicates through services. Services coordinate application workflows and own no SQL. Repositories isolate persistence. Engines validate and translate query or rule contracts. SQLAlchemy models define the data relationships.
 
+## Assistant boundaries (v0.9.0)
+
+The provider layer is DTO-based and uses a registry, capability validation, bounded policy, typed errors and secret redaction. The local MVP permits only HTTP to `localhost` and has no credentials. `ToolRegistry` is allowlisted and schema-validated; the local assistant exposes only `LibraryQueryTool`, resolving natural-language criteria through `LibraryService` without SQL generation or direct repository access. The execution boundary remains simulated and requires explicit confirmation and authorization. `AssistantPanel` delegates local queries to `AssistantWorker` in a `QThread` with cooperative cancellation.
+
 ## Data flow
 
 Library search, sort, and filters flow from `LibraryView` to `LibraryService`, then `TrackRepository`, where SQLite performs the work. `TrackTableModel` retains only fetched rows and asks `LibraryService` for additional pages through `canFetchMore()` and `fetchMore()`.

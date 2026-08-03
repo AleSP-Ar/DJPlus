@@ -5,14 +5,22 @@ from pathlib import Path
 
 RUNTIME_MODULES = {
     "assistant_runtime",
+    "assistant_provider",
+    "provider_registry",
+    "provider_credentials",
+    "provider_transport",
+    "provider_adapters",
+    "library_tools",
     "tool_dispatcher",
     "prompt_builder",
     "conversation_session",
     "action_pipeline",
+    "action_executor",
     "confirmation_manager",
+    "local_assistant_mvp",
 }
 INFRASTRUCTURE_IMPORT_PREFIXES = (
-    "app.repository", "app.database", "sqlalchemy", "sqlite3", "pathlib", "os",
+    "app.repository", "app.database", "sqlalchemy", "sqlite3", "pathlib", "os", "requests", "httpx",
 )
 SERVICE_DIRECTORY = Path(__file__).resolve().parents[1] / "app" / "services"
 
@@ -63,15 +71,38 @@ class AIRuntimeArchitectureTests(unittest.TestCase):
         for module_name in graph:
             visit(module_name)
 
+    def test_only_local_transport_may_use_stdlib_network_modules(self):
+        for module_name in RUNTIME_MODULES:
+            imports = _imports_for(module_name)
+            uses_stdlib_network = any(
+                name == prefix or name.startswith(f"{prefix}.")
+                for name in imports for prefix in ("urllib", "socket")
+            )
+            self.assertEqual(uses_stdlib_network, module_name == "provider_transport")
+
     def test_runtime_public_contracts_are_exported(self):
         import app.services as services
 
         expected_exports = {
             "AssistantRuntime", "RuntimeRequestDTO", "RuntimeResultDTO",
+            "AssistantProvider", "ProviderRequestDTO", "ProviderResponseDTO", "ProviderCapabilitiesDTO", "MockAssistantProvider",
+            "ProviderConfigDTO", "ProviderPolicy", "RetryPolicyDTO", "ProviderUsageDTO", "ProviderErrorDTO", "ProviderExecutionResultDTO", "ProviderCancellationToken",
+            "ProviderRegistry", "ProviderSelectionDTO", "ProviderNotFoundError",
+            "CredentialProvider", "InMemoryCredentialProvider", "ProviderCredentialRefDTO", "SecretRedactor", "CredentialNotFoundError",
+            "ProviderTransport", "TransportRequestDTO", "TransportResponseDTO", "TransportErrorDTO", "MockProviderTransport", "LocalhostHTTPProviderTransport",
+            "OpenAIProvider", "OllamaProvider", "LMStudioProvider", "ProviderFactory", "ProviderCapabilityResolver", "ProviderCapabilityError", "OllamaLocalConfigDTO",
+            "LibraryQueryTool", "PlaylistTool", "CollectionTool", "LibraryQueryInputDTO", "PlaylistToolInputDTO", "CollectionToolInputDTO",
+            "FavoriteTool", "HistoryTool", "ImportTool", "FavoriteToolInputDTO", "HistoryToolInputDTO", "ImportToolInputDTO",
+            "DJCompatibilityTool", "MusicAnalysisTool", "DJCompatibilityInputDTO", "MusicAnalysisInputDTO", "ToolSchemaValidator", "ToolSchemaValidationError",
             "ToolRegistry", "ToolDispatcher", "ToolCallDTO", "ToolResultDTO",
             "PromptBuilder", "PromptDTO",
             "ConversationSession", "ConversationSessionDTO", "ConversationMessageDTO", "MessageRole",
             "ActionPipeline", "ActionProposalDTO", "ActionValidationDTO", "ActionType",
+            "ActionExecutor", "ExecutionRequestDTO", "ExecutionResultDTO", "MockActionExecutor", "ActionExecutionError",
+            "ExecutionAuditEntryDTO", "ExecutionAuditLog", "IdempotencyRegistry", "RollbackResultDTO",
+            "ActionExecutionService", "ActionExecutionServiceError", "ActionExecutionAuthorizationDTO",
+            "ActionExecutionServiceResultDTO", "ActionExecutionState",
+            "LocalAssistantConfigDTO", "LocalAssistantMVP",
             "ConfirmationManager", "ConfirmationPolicy", "ConfirmationRequestDTO", "ConfirmationResultDTO",
         }
         self.assertTrue(expected_exports.issubset(set(services.__all__)))

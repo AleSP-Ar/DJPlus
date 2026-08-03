@@ -15,6 +15,9 @@ from app.services.assistant_runtime import (
     RuntimeRequestDTO,
     RuntimeResultDTO,
 )
+from app.services.assistant_provider import MockAssistantProvider, ProviderResponseDTO
+from app.services.assistant_provider import ProviderConfigDTO, ProviderCancellationToken, RetryPolicyDTO
+from app.services.provider_registry import ProviderNotFoundError, ProviderRegistry
 from app.services.tool_dispatcher import ToolCallDTO, ToolDispatcher, ToolRegistry, UnknownToolError
 
 
@@ -105,7 +108,7 @@ class AssistantRuntimeTests(unittest.TestCase):
         self.assertNotIn("app.repository", source)
         self.assertNotIn("sqlalchemy", source.lower())
         self.assertNotIn("sqlite3", source.lower())
-        self.assertNotIn(".execute(", source)
+        self.assertNotIn(".complete(", source)
         self.assertNotIn("AssistantTool", source)
 
     def test_runtime_uses_only_the_injected_dispatcher_for_tool_calls(self):
@@ -178,3 +181,75 @@ class AssistantRuntimeTests(unittest.TestCase):
 
         self.assertTrue(result.confirmation_result.confirmed)
         self.assertEqual(pipeline.get_proposal(proposal.action_id), proposal)
+
+    def test_runtime_uses_explicit_registered_provider_and_maps_its_response(self):
+        provider = MockAssistantProvider({self.request.user_query: "There are 42 tracks."})
+        registry = ProviderRegistry([provider])
+        request = RuntimeRequestDTO(
+            self.request.user_query,
+            self.context,
+            self.request.session_id,
+            self.request.timestamp_utc,
+            provider_name="mock",
+            request_id="provider-request-1",
+        )
+
+        result = AssistantRuntime(provider_registry=registry).process(request)
+
+        self.assertIsInstance(result.assistant_response, ProviderResponseDTO)
+        self.assertEqual(result.assistant_response.content, "There are 42 tracks.")
+        self.assertEqual(provider.calls[0].request_id, "provider-request-1")
+        self.assertEqual(provider.calls[0].prompt, result.generated_prompt)
+
+    def test_runtime_uses_default_provider_and_rejects_missing_provider_selection(self):
+        provider = MockAssistantProvider(default_response="Default response")
+        runtime = AssistantRuntime(provider_registry=ProviderRegistry([provider], default_provider_name="mock"))
+
+        self.assertEqual(runtime.process(self.request).assistant_response.content, "Default response")
+        missing = RuntimeRequestDTO(
+            self.request.user_query,
+            self.context,
+            self.request.session_id,
+            self.request.timestamp_utc,
+            provider_name="missing",
+        )
+        with self.assertRaises(ProviderNotFoundError):
+            runtime.process(missing)
+
+    def test_runtime_validates_provider_injection_and_generated_provider_request_identifier(self):
+        with self.assertRaises(TypeError):
+            AssistantRuntime(provider_registry=object())
+        provider = MockAssistantProvider()
+        runtime = AssistantRuntime(provider_registry=ProviderRegistry([provider], default_provider_name="mock"))
+
+        result = runtime.process(self.request)
+
+        self.assertEqual(
+            result.assistant_response.request_id,
+            f"{self.request.session_id}:{self.request.timestamp_utc.isoformat()}",
+        )
+
+    def test_runtime_passes_validated_config_and_maps_provider_execution_errors(self):
+        config = ProviderConfigDTO("mock-v2", 0.4, 64, 10, RetryPolicyDTO(1, 2))
+        provider = MockAssistantProvider(default_response="Recovered", scenario="retry_success")
+        runtime = AssistantRuntime(provider_registry=ProviderRegistry([provider], default_provider_name="mock"))
+        configured = RuntimeRequestDTO(
+            self.request.user_query,
+            self.context,
+            self.request.session_id,
+            self.request.timestamp_utc,
+            provider_config=config,
+        )
+        failed_provider = MockAssistantProvider(scenario="invalid_response")
+        failed_runtime = AssistantRuntime(
+            provider_registry=ProviderRegistry([failed_provider], default_provider_name="mock")
+        )
+
+        result = runtime.process(configured)
+        failed = failed_runtime.process(self.request)
+
+        self.assertEqual(provider.calls[0].config, config)
+        self.assertEqual(result.provider_execution.attempts, 2)
+        self.assertEqual(result.assistant_response.content, "Recovered")
+        self.assertIsNone(failed.assistant_response)
+        self.assertEqual(failed.provider_execution.error.code, "invalid_response")

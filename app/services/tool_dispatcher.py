@@ -14,6 +14,68 @@ class UnknownToolError(ToolRegistryError):
     """Raised when a tool call is outside the registry allowlist."""
 
 
+class ToolSchemaValidationError(ToolRegistryError):
+    """Raised when a tool definition or call violates its bounded schema."""
+
+
+class ToolSchemaValidator:
+    """Small deterministic validator for the JSON-like schemas used by tools."""
+
+    _KNOWN_TYPES = {"object", "string", "integer", "number", "boolean", "array", "track"}
+
+    def validate_schema(self, schema):
+        if not isinstance(schema, dict) or schema.get("type") != "object":
+            raise ToolSchemaValidationError("El schema de herramienta debe describir un objeto.")
+        properties = schema.get("properties", {})
+        if not isinstance(properties, dict):
+            raise ToolSchemaValidationError("Las propiedades del schema deben ser un diccionario.")
+        required = schema.get("required", ())
+        if not isinstance(required, (list, tuple)) or not all(isinstance(name, str) for name in required):
+            raise ToolSchemaValidationError("Los campos requeridos del schema no son validos.")
+        if not set(required).issubset(properties):
+            raise ToolSchemaValidationError("Los campos requeridos deben estar declarados en properties.")
+        for definition in properties.values():
+            if not isinstance(definition, dict):
+                raise ToolSchemaValidationError("Cada propiedad del schema debe ser un diccionario.")
+            value_type = definition.get("type")
+            if value_type is not None and value_type not in self._KNOWN_TYPES:
+                raise ToolSchemaValidationError("El tipo de propiedad del schema no esta soportado.")
+
+    def validate_call(self, schema, arguments):
+        self.validate_schema(schema)
+        if not isinstance(arguments, dict):
+            raise ToolSchemaValidationError("Los argumentos de herramienta deben ser un objeto.")
+        properties = schema.get("properties", {})
+        required = tuple(schema.get("required", ()))
+        if schema.get("additionalProperties", True) is False and set(arguments) - set(properties):
+            raise ToolSchemaValidationError("La llamada contiene argumentos no permitidos.")
+        missing = [name for name in required if name not in arguments]
+        if missing:
+            raise ToolSchemaValidationError("Faltan argumentos requeridos en la llamada.")
+        for name, value in arguments.items():
+            if name in properties:
+                self._validate_value(value, properties[name])
+
+    def _validate_value(self, value, definition):
+        if "enum" in definition and value not in definition["enum"]:
+            raise ToolSchemaValidationError("El argumento no pertenece al enum permitido.")
+        value_type = definition.get("type")
+        valid = {
+            "object": isinstance(value, dict),
+            "string": isinstance(value, str),
+            "integer": isinstance(value, int) and not isinstance(value, bool),
+            "number": isinstance(value, (int, float)) and not isinstance(value, bool),
+            "boolean": isinstance(value, bool),
+            "array": isinstance(value, (list, tuple)),
+            "track": value is not None,
+        }
+        if value_type is not None and not valid[value_type]:
+            raise ToolSchemaValidationError("El tipo de argumento no coincide con el schema.")
+        if value_type == "array" and "items" in definition:
+            for item in value:
+                self._validate_value(item, definition["items"])
+
+
 @dataclass(frozen=True)
 class ToolCallDTO:
     tool_name: str
@@ -59,8 +121,59 @@ class ToolRegistry:
 
     def __init__(self, tools=()):
         self._tools = {}
+        self._schema_validator = ToolSchemaValidator()
         for tool in tools:
             self.register(tool)
+
+    @classmethod
+    def default(
+        cls,
+        library_service,
+        playlist_service,
+        collection_service,
+        favorite_service=None,
+        history_service=None,
+        import_manager_facade=None,
+        dj_intelligence_service=None,
+        music_analysis_service=None,
+    ):
+        """Build the standard library-tool allowlist from existing services only."""
+        from .library_tools import (
+            CollectionTool,
+            FavoriteTool,
+            HistoryTool,
+            ImportTool,
+            DJCompatibilityTool,
+            LibraryQueryTool,
+            MusicAnalysisTool,
+            PlaylistTool,
+        )
+
+        tools = [
+            LibraryQueryTool(library_service),
+            PlaylistTool(playlist_service),
+            CollectionTool(collection_service),
+        ]
+        optional_tools = (
+            (favorite_service, FavoriteTool),
+            (history_service, HistoryTool),
+            (import_manager_facade, ImportTool),
+        )
+        if any(service is not None for service, _ in optional_tools) and not all(
+            service is not None for service, _ in optional_tools
+        ):
+            raise ToolRegistryError("El registro estandar requiere los tres servicios opcionales juntos.")
+        tools.extend(tool_type(service) for service, tool_type in optional_tools if service is not None)
+        analysis_tools = (
+            (dj_intelligence_service, DJCompatibilityTool),
+            (music_analysis_service, MusicAnalysisTool),
+        )
+        if any(service is not None for service, _ in analysis_tools) and not all(
+            service is not None for service, _ in analysis_tools
+        ):
+            raise ToolRegistryError("El registro estandar requiere ambos servicios de analisis juntos.")
+        tools.extend(tool_type(service) for service, tool_type in analysis_tools if service is not None)
+        return cls(tuple(tools))
 
     def register(self, tool):
         if not isinstance(tool, AssistantTool):
@@ -69,6 +182,7 @@ class ToolRegistry:
             raise ToolRegistryError("Cada herramienta debe tener un nombre válido.")
         if tool.name in self._tools:
             raise ToolRegistryError("No se permiten nombres de herramienta duplicados.")
+        self._schema_validator.validate_schema(tool.input_schema)
         self._tools[tool.name] = tool
 
     def resolve(self, tool_name):
@@ -113,6 +227,7 @@ class ToolDispatcher:
             raise TypeError("ToolDispatcher.dispatch requiere ToolCallDTO.")
         tool = self._registry.resolve(call.tool_name)
         try:
+            ToolSchemaValidator().validate_call(tool.input_schema, dict(call.arguments))
             result = tool.execute(dict(call.arguments))
             if not isinstance(result, AssistantToolResultDTO):
                 raise ToolRegistryError("La herramienta debe devolver AssistantToolResultDTO.")

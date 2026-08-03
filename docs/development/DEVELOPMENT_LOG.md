@@ -1,5 +1,14 @@
 # Development Log
 
+## 2026-08-03 — v0.9.0 AI Assistant Foundations
+
+- Se completó la infraestructura de proveedores: contratos, registro, selección, política de reintentos, errores tipados, redacción de secretos y transporte inyectable.
+- Se completó el Tool Calling Framework con schemas validados y herramientas integradas exclusivamente mediante Services.
+- Se incorporó el Execution Framework simulado con confirmación, autorización explícita, revalidación, auditoría, idempotencia y rollback no operativo.
+- Se implementó el MVP de Ollama local, limitado a localhost, con `AssistantPanel` PySide6, worker cancelable y `LibraryQueryTool` de solo lectura.
+- Se incorporó búsqueda natural determinista de biblioteca, filtros compuestos, resultados paginados y mensajes explicativos.
+- El cierre de release sigue pendiente de commit y tag aprobados explícitamente.
+
 ## 2026-08-01
 
 - Se creó la interfaz PySide6.

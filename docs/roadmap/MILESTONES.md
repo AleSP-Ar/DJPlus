@@ -2,6 +2,10 @@
 
 ## Historial
 
+## v0.9.0 release candidate
+
+AI Assistant Foundations — Providers, Tool Calling, Execution Framework, Ollama local and Natural Language Library Search — is prepared for release as `v0.9.0`. Commit and tag remain pending explicit approval.
+
 | Hito | Estado | Referencia |
 |---|---|---|
 | Inicialización del proyecto | Completado | v0.1 |
@@ -10,7 +14,8 @@
 | Arquitectura MVC inicial | Completado | v0.4 |
 | Biblioteca Profesional | Release Candidate | v0.5.0 |
 | Import Engine | Completado | v0.6.1 |
-| Épica 1 — AI Runtime Core | Preparado para cierre | v0.8.0 |
+| Épica 1 — AI Runtime Core | Completado | v0.8.0 |
+| v0.9.0 — AI Assistant Foundations | Preparado para release | v0.9.0 |
 
 ## Hito técnico actual
 

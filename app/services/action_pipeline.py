@@ -91,6 +91,19 @@ class ActionPipeline:
             return ActionValidationDTO(False, errors=("El identificador de acción ya existe.",))
         return ActionValidationDTO(True)
 
+    def revalidate_registered_proposal(self, proposal):
+        """Validate that a proposal is still the active immutable proposal before execution."""
+        if not isinstance(proposal, ActionProposalDTO):
+            return ActionValidationDTO(False, errors=("La propuesta debe ser ActionProposalDTO.",))
+        registered = self._proposals.get(proposal.action_id)
+        if registered is None:
+            return ActionValidationDTO(False, errors=("La propuesta ya no esta registrada.",))
+        if registered != proposal:
+            return ActionValidationDTO(False, errors=("La propuesta no coincide con el registro activo.",))
+        if self.was_discarded(proposal.action_id):
+            return ActionValidationDTO(False, errors=("La propuesta fue descartada.",))
+        return ActionValidationDTO(True)
+
     def register_proposal(self, proposal):
         validation = self.validate_proposal(proposal)
         if not validation.valid:

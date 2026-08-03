@@ -61,6 +61,12 @@ class LibraryService:
         self.filter_criteria = self.filter_engine.build(**filters)
         return self.load_library()
 
+    def query(self, text="", **filters):
+        """Apply validated text and filter criteria together through the service boundary."""
+        self.search_criteria = self.search_engine.build(text=text)
+        self.filter_criteria = self.filter_engine.build(**filters)
+        return self.load_library()
+
     def apply_filter_criteria(self, criteria):
         """Replace active filters with validated criteria from another service."""
         self.filter_criteria = criteria

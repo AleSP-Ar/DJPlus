@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from types import MappingProxyType
 
 
 class AssistantError(ValueError):
@@ -18,12 +19,26 @@ class AssistantActionProposalDTO:
     label: str
     payload: dict
 
+    def __post_init__(self):
+        if not isinstance(self.payload, dict):
+            raise AssistantError("La propuesta debe usar un payload de datos.")
+        object.__setattr__(self, "payload", MappingProxyType(dict(self.payload)))
+
 
 @dataclass(frozen=True)
 class AssistantToolResultDTO:
     response: str
     data_used: dict
     proposed_actions: tuple[AssistantActionProposalDTO, ...] = ()
+
+    def __post_init__(self):
+        if not isinstance(self.data_used, dict):
+            raise AssistantError("La herramienta debe devolver datos tipados.")
+        if not isinstance(self.proposed_actions, tuple) or not all(
+            isinstance(action, AssistantActionProposalDTO) for action in self.proposed_actions
+        ):
+            raise AssistantError("Las propuestas deben ser AssistantActionProposalDTO.")
+        object.__setattr__(self, "data_used", MappingProxyType(dict(self.data_used)))
 
 
 @dataclass(frozen=True)
