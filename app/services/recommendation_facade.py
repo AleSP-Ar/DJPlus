@@ -1,8 +1,10 @@
 """Read-only paged recommendation orchestration through application services."""
 
 from dataclasses import dataclass
+import time
 
 from .recommendation_service import RecommendationQueryDTO, RecommendationService, RankedRecommendationDTO
+from .optimization_metrics import OperationMetricsDTO, StageTimingDTO
 
 
 class RecommendationFacadeError(ValueError):
@@ -93,10 +95,26 @@ class RecommendationFacade:
         self._recommendation_service = recommendation_service
         self._last_query = None
         self._page_number = 0
+        self._last_metrics = OperationMetricsDTO("recommendation_facade", ())
+        self._last_stage_ms = {"library": 0.0, "history": 0.0, "ranking": 0.0}
 
     def recommend(self, query):
+        started = time.perf_counter()
+        self._last_stage_ms = {"library": 0.0, "history": 0.0, "ranking": 0.0}
+        page = self._recommend(query)
+        total_ms = (time.perf_counter() - started) * 1000
+        self._last_metrics = OperationMetricsDTO("recommendation_facade", (
+            StageTimingDTO("library", self._last_stage_ms["library"]),
+            StageTimingDTO("history", self._last_stage_ms["history"]),
+            StageTimingDTO("ranking", self._last_stage_ms["ranking"]),
+            StageTimingDTO("total", total_ms),
+        ))
+        return page
+
+    def _recommend(self, query):
         if not isinstance(query, RecommendationFacadeQueryDTO):
             raise TypeError("RecommendationFacade.recommend requiere RecommendationFacadeQueryDTO.")
+        library_started = time.perf_counter()
         if query.load_more:
             if self._last_query is None:
                 raise RecommendationFacadeError("No hay una consulta previa para cargar mas recomendaciones.")
@@ -108,15 +126,20 @@ class RecommendationFacade:
             active_query = query
             self._last_query = query
             self._page_number = 1
+        self._last_stage_ms["library"] = (time.perf_counter() - library_started) * 1000
         if not isinstance(rows, (tuple, list)) or not isinstance(has_more, bool):
             raise RecommendationFacadeError("LibraryService devolvio una pagina invalida.")
         total = self._library_service.count_results()
         if not isinstance(total, int) or total < 0:
             raise RecommendationFacadeError("LibraryService devolvio un total invalido.")
+        history_started = time.perf_counter()
         recent_ids = self._recent_track_ids(active_query.recent_history_limit)
+        self._last_stage_ms["history"] = (time.perf_counter() - history_started) * 1000
         current_id = active_query.current_track.id
         candidates = tuple(track for track in rows if getattr(track, "id", None) != current_id and getattr(track, "id", None) not in recent_ids)
+        ranking_started = time.perf_counter()
         ranked = self._recommendation_service.recommend(RecommendationQueryDTO(active_query.current_track, candidates, active_query.limit))
+        self._last_stage_ms["ranking"] = (time.perf_counter() - ranking_started) * 1000
         explanation = self._explanation(active_query, total, len(recent_ids), len(ranked))
         return RecommendationPageDTO(ranked, total, tuple(sorted(recent_ids)), has_more, self._page_number, explanation)
 

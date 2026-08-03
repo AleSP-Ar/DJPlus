@@ -1,5 +1,12 @@
 # Development Log
 
+## 2026-08-03 — v0.12.0 Core Optimization & Hardening
+
+- Cachés locales acotadas, profiling por etapa y métricas tipadas de error, cancelación, timeout y concurrencia.
+- Hardening cooperativo de `ImportWorker`, `AssistantWorker` y `ToolPlanExecutor`, con límites locales, aislamiento de fallos y cierre seguro.
+- `DiagnosticsService`, `DiagnosticsTool` y resumen opcional en `AssistantPanel`, sin telemetría, persistencia ni histórico.
+- Riesgo: los timeouts y cierres no fuerzan tareas en curso; se observan en el siguiente punto cooperativo.
+
 ## 2026-08-03 — v0.11.0 DJ Recommendation Engine
 
 - Se implementó scoring de recomendaciones determinista y explicable por BPM, key, energía e historial.

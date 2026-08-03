@@ -137,6 +137,7 @@ class ToolRegistry:
         dj_intelligence_service=None,
         music_analysis_service=None,
         recommendation_facade=None,
+        diagnostics_service=None,
     ):
         """Build the standard library-tool allowlist from existing services only."""
         from .library_tools import (
@@ -149,6 +150,7 @@ class ToolRegistry:
             MusicAnalysisTool,
             PlaylistTool,
             RecommendationTool,
+            DiagnosticsTool,
         )
 
         tools = [
@@ -177,6 +179,8 @@ class ToolRegistry:
         tools.extend(tool_type(service) for service, tool_type in analysis_tools if service is not None)
         if recommendation_facade is not None:
             tools.append(RecommendationTool(recommendation_facade))
+        if diagnostics_service is not None:
+            tools.append(DiagnosticsTool(diagnostics_service))
         return cls(tuple(tools))
 
     def register(self, tool):

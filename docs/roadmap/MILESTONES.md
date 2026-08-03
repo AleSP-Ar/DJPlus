@@ -2,6 +2,10 @@
 
 ## Historial
 
+## v0.12.0 release candidate
+
+Core Optimization & Hardening — cachés acotadas, profiling, ejecución cooperativa, límites de concurrencia y diagnóstico read-only sin histórico — está preparado para release como `v0.12.0`. Commit y tag continúan pendientes de aprobación explícita.
+
 ## v0.11.0 release candidate
 
 DJ Recommendation Engine — scoring, ranking determinista por página, filtros, exclusión de historial, fachada, herramienta y panel — está preparado para release como `v0.11.0`. Commit y tag continúan pendientes de aprobación explícita.

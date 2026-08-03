@@ -5,17 +5,21 @@ from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget
 
 from app.services.local_assistant_mvp import LocalAssistantMVP
+from app.services.diagnostics_service import DiagnosticsService
 from .assistant_worker import AssistantWorker
 
 
 class AssistantPanel(QWidget):
     """Display local assistant answers and read-only tool results without actions."""
 
-    def __init__(self, assistant_mvp, parent=None):
+    def __init__(self, assistant_mvp, parent=None, diagnostics_service=None):
         super().__init__(parent)
         if not isinstance(assistant_mvp, LocalAssistantMVP):
             raise TypeError("AssistantPanel requiere LocalAssistantMVP.")
+        if diagnostics_service is not None and not isinstance(diagnostics_service, DiagnosticsService):
+            raise TypeError("diagnostics_service debe ser DiagnosticsService o nulo.")
         self._assistant_mvp = assistant_mvp
+        self._diagnostics_service = diagnostics_service
         self._thread = None
         self._worker = None
         layout = QVBoxLayout(self)
@@ -32,12 +36,15 @@ class AssistantPanel(QWidget):
         layout.addLayout(row)
         self.status_label = QLabel("Listo")
         layout.addWidget(self.status_label)
+        self.diagnostics_label = QLabel("Diagnostico: no disponible")
+        layout.addWidget(self.diagnostics_label)
         self.response_view = QTextEdit()
         self.response_view.setReadOnly(True)
         layout.addWidget(self.response_view)
         self.send_button.clicked.connect(self._submit)
         self.cancel_button.clicked.connect(self._cancel)
         self.query_input.returnPressed.connect(self._submit)
+        self._refresh_diagnostics()
 
     def _submit(self):
         query = self.query_input.text().strip()
@@ -86,20 +93,32 @@ class AssistantPanel(QWidget):
                 )
         self.response_view.setPlainText("\n\n".join(lines) or "Sin respuesta local.")
         self.status_label.setText("Listo")
+        self._refresh_diagnostics()
 
     def _show_error(self, message):
         self.response_view.setPlainText(message)
         self.status_label.setText("Error")
+        self._refresh_diagnostics()
 
     def _show_cancelled(self):
         self.response_view.setPlainText("Consulta cancelada.")
         self.status_label.setText("Cancelada")
+        self._refresh_diagnostics()
 
     def _cleanup_worker(self):
         self._thread = None
         self._worker = None
         self.send_button.setEnabled(True)
         self.cancel_button.setEnabled(False)
+        self._refresh_diagnostics()
+
+    def _refresh_diagnostics(self):
+        if self._diagnostics_service is None:
+            return
+        snapshot = self._diagnostics_service.snapshot()
+        self.diagnostics_label.setText(
+            f"Diagnostico: errores {snapshot.errors} · cancelaciones {snapshot.cancellations} · timeouts {snapshot.timeouts}"
+        )
 
     def closeEvent(self, event: QCloseEvent):
         if self._thread is not None and self._thread.isRunning():

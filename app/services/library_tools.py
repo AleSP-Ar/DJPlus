@@ -2,9 +2,11 @@
 
 from dataclasses import dataclass
 import re
+import time
 from types import MappingProxyType, SimpleNamespace
 
 from .assistant_facade import AssistantActionProposalDTO, AssistantError, AssistantTool, AssistantToolResultDTO
+from .optimization_metrics import OperationMetricsDTO, StageTimingDTO
 
 
 def _result(response, data_used, proposed_actions=()):
@@ -255,8 +257,22 @@ class LibraryQueryTool(AssistantTool):
         self._library_service = library_service
         self._last_interpreted_query = None
         self._page_number = 0
+        self._interpretation_cache = {}
+        self._last_metrics = OperationMetricsDTO("library_query", ())
+        self._last_interpretation_ms = 0.0
 
     def execute(self, input_data):
+        started = time.perf_counter()
+        self._last_interpretation_ms = 0.0
+        result = self._execute(input_data)
+        total_ms = (time.perf_counter() - started) * 1000
+        self._last_metrics = OperationMetricsDTO("library_query", (
+            StageTimingDTO("interpretation", self._last_interpretation_ms),
+            StageTimingDTO("service", max(0.0, total_ms - self._last_interpretation_ms)),
+        ))
+        return result
+
+    def _execute(self, input_data):
         request = LibraryQueryInputDTO.from_input(input_data)
         if request.load_more:
             if self._last_interpreted_query is None:
@@ -269,7 +285,7 @@ class LibraryQueryTool(AssistantTool):
             self._page_number += 1
             return self._page_result(self._last_interpreted_query, count, rows, has_more, True)
         if request.query is not None:
-            parsed, explanation = NaturalLibraryQueryInterpreter().interpret(request.query)
+            parsed, explanation = self._interpret(request.query)
             if parsed is None:
                 return _result(explanation, {"interpreted": False})
             try:
@@ -291,6 +307,19 @@ class LibraryQueryTool(AssistantTool):
         if not isinstance(count, int) or count < 0:
             raise AssistantError("LibraryService devolvio una cantidad de pistas invalida.")
         return _result(f"La biblioteca contiene {count} pistas.", {"track_count": count})
+
+    def _interpret(self, query):
+        started = time.perf_counter()
+        cached = self._interpretation_cache.get(query)
+        if cached is not None:
+            self._last_interpretation_ms = (time.perf_counter() - started) * 1000
+            return cached
+        result = NaturalLibraryQueryInterpreter().interpret(query)
+        if len(self._interpretation_cache) >= 128:
+            self._interpretation_cache.clear()
+        self._interpretation_cache[query] = result
+        self._last_interpretation_ms = (time.perf_counter() - started) * 1000
+        return result
     def _page_result(self, parsed, count, rows, has_more, loaded_more):
         if not isinstance(count, int) or count < 0:
             raise AssistantError("LibraryService devolvio una cantidad de pistas invalida.")
@@ -368,8 +397,17 @@ class RecommendationTool(AssistantTool):
 
     def __init__(self, recommendation_facade):
         self._recommendation_facade = recommendation_facade
+        self._last_metrics = OperationMetricsDTO("recommendation_tool", ())
 
     def execute(self, input_data):
+        started = time.perf_counter()
+        result = self._execute(input_data)
+        self._last_metrics = OperationMetricsDTO("recommendation_tool", (
+            StageTimingDTO("facade", (time.perf_counter() - started) * 1000),
+        ))
+        return result
+
+    def _execute(self, input_data):
         from .recommendation_facade import RecommendationFacade, RecommendationFacadeQueryDTO
 
         if not isinstance(self._recommendation_facade, RecommendationFacade):
@@ -381,6 +419,27 @@ class RecommendationTool(AssistantTool):
             recent_history_limit=request.recent_history_limit, load_more=request.load_more,
         ))
         return _result(page.explanation, {"recommendation_page": page})
+
+
+class DiagnosticsTool(AssistantTool):
+    """Expose only aggregate local diagnostics through an injected service."""
+
+    name = "diagnostics"
+    description = "Resume salud local, caches y limites sin datos sensibles."
+    input_schema = {"type": "object", "properties": {}, "additionalProperties": False}
+
+    def __init__(self, diagnostics_service):
+        from .diagnostics_service import DiagnosticsService
+        if not isinstance(diagnostics_service, DiagnosticsService):
+            raise TypeError("DiagnosticsTool requiere DiagnosticsService.")
+        self._diagnostics_service = diagnostics_service
+
+    def execute(self, input_data):
+        if dict(input_data or {}):
+            raise AssistantError("El diagnostico no acepta parametros.")
+        snapshot = self._diagnostics_service.snapshot()
+        return _result("Diagnostico local disponible.", {"health_snapshot": snapshot, "diagnostic_text": snapshot.export_text()})
+
 
 class PlaylistTool(AssistantTool):
     """Read playlist summaries and emit create proposals without writing."""

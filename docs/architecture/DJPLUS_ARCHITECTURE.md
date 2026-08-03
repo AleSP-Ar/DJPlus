@@ -33,6 +33,12 @@ The provider layer is DTO-based and uses a registry, capability validation, boun
 
 ## Data flow
 
+## Core Optimization & Hardening (v0.12.0)
+
+Los cachés locales retienen únicamente interpretación determinista y topología de dependencias; no retienen filas, historial ni resultados. `ImportWorker`, `AssistantWorker` y `ToolPlanExecutor` admiten límites locales y timeouts cooperativos. Un timeout no termina una tarea por la fuerza: se observa en el siguiente punto cooperativo.
+
+`DiagnosticsService` crea `HealthSnapshotDTO` desde componentes inyectados en memoria. `DiagnosticsTool` es allowlisted y read-only; `AssistantPanel` puede mostrar un resumen compacto opcional. No hay Repository, SQLite, telemetría, red, persistencia ni histórico de diagnósticos.
+
 Library search, sort, and filters flow from `LibraryView` to `LibraryService`, then `TrackRepository`, where SQLite performs the work. `TrackTableModel` retains only fetched rows and asks `LibraryService` for additional pages through `canFetchMore()` and `fetchMore()`.
 
 Collection and playlist panels call their respective services. Smart Collections persist rules, convert them through `SmartRuleEngine` and `FilterEngine`, then evaluate through `LibraryService`; their membership is never materialized. Favorites are track state, while history is append-only activity data.
