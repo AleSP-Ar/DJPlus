@@ -1,5 +1,17 @@
 # Milestones
 
+## v0.19.0 local published - Epic 17 closed
+
+Configuration, Logging & Backup Foundation closes with atomic versioned settings, local sanitized JSONL diagnostics and verified SQLite ZIP backups. Restore requires plan/token confirmation and a mandatory pre-action backup; UI, scheduling, remote storage and media copies are out of scope.
+
+## Next: Epic 18 - Preview Player
+
+Pending approval. No implementation begins in v0.19.0.
+
+## Épica 17 — Configuration, Logging & Backup Foundation (Sprints 17.1–17.3)
+
+En progreso, sin commit de sprint: configuración persistente/versionada, logging JSON Lines y backup ZIP verificable. El nuevo motor hace copia SQLite consistente, manifest/checksums, retención, plan/token de restore y backup preventivo; no incluye medios ni crea UI o scheduler. La UI de Settings, backup remoto y telemetría externa permanecen fuera de alcance.
+
 ## v0.18.0 local release candidate
 
 Multi-format Audio Analysis adds the official MP3, FLAC, AIFF/AIF and WAV decoder order, native PCM decoders, optional FFmpeg MP3/FLAC decoding, local capabilities/diagnostics, bundled checksum verification and optional MainWindow composition. Real MP3/FLAC validation is complete. The Windows x64 runtime remains part of the distributable package but its 114.9 MB executable is intentionally ignored by Git; the local installer build must supply the verified binary and validate its manifest checksum.

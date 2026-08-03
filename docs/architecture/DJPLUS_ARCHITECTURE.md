@@ -1,5 +1,9 @@
 # DJPlus Architecture — v0.5.0 Release Candidate (pending approval)
 
+## v0.19.0 Epic 17 closure
+
+Epic 17 adds local configuration, structured diagnostics and verified backup/restore foundations. The UI does not configure settings, log handlers or restore operations: composition injects settings, logger and database lifecycle callbacks. Recovery packages are local ZIPs with SQLite backup API, integrity validation, manifest/checksums and confirmed pre-action-protected restore. The next roadmap item is Epic 18 - Preview Player; it is not implemented here.
+
 ## General structure
 
 ```text
@@ -32,6 +36,24 @@ The provider layer is DTO-based and uses a registry, capability validation, boun
 `RecommendationScoringEngine` evaluates BPM, key, energy and play history with explicit weighted reasons. `RecommendationService` ranks candidates deterministically; `RecommendationFacade` obtains candidate pages from `LibraryService`, applies optional filters and excludes recently played IDs from `HistoryService`. `RecommendationTool` is read-only and `AssistantPanel` renders rank, score and confidence. Ranking is intentionally per candidate page, not global across the whole library.
 
 ## Data flow
+
+## Configuration Foundation (Epic 17)
+
+`SettingsService` owns user preferences only. Its immutable `AppSettingsDTO` has schema version 2 and sections for general UI readiness, library discovery, analysis limits, FFmpeg resolution policy, non-secret assistant preferences, logging and backup readiness. It writes atomically to `%APPDATA%\DJPlus\config.json` by default and accepts an explicit path for tests. No setting stores an API key, token, password or credential reference.
+
+Settings adapters are opt-in: they create compatible `FFmpegDecoderConfigDTO`/`FFmpegResolver`, analysis hardening limits, local analysis services and provider request configuration. Existing constructors preserve their defaults and no service queries `SettingsService` implicitly. Schema `1 → 2` is a small ordered migration with backup; future versions are rejected. Backup remains configuration only.
+
+## Structured Logging and Diagnostics (Epic 17)
+
+`AppLoggingService` consumes `LoggingSettingsDTO` explicitly and configures exactly one local rotating JSONL handler for the `djplus` logger tree. Defaults are INFO and `%APPDATA%\DJPlus\logs`; tests inject temporary directories. JSON records carry UTC timestamp, level, hierarchical logger, bounded safe context, application version, process and thread. The reusable sanitizer redacts credentials, tokens, authorization values, prompts/routed file metadata and executable paths, limits depth/size, and never serializes arbitrary DTOs or calls unknown `repr`.
+
+The application composition installs exception hooks explicitly, records unhandled sys/thread tracebacks with a recursion guard, preserves previous hooks and shuts logging down safely. A bounded atomic diagnostic export reports sanitized configuration, FFmpeg capability information, minimal database status and recent logs with a SHA-256 manifest. It excludes the database, audio, music paths, secrets, prompts and `ffmpeg.exe`. `DiagnosticsService` remains the separate read-only in-memory metrics surface.
+
+## Backup and Restore (Epic 17)
+
+`BackupRestoreService` is composed with `SettingsService`, `BackupSettingsDTO`, the SQLite path and a hierarchical logger. It uses SQLite's backup API rather than copying a live database, validates `PRAGMA integrity_check`, then emits a local standard ZIP containing only the SQLite copy where available, portable sanitized settings, strict manifest and SHA-256 checksum inventory. Media, complete library paths, prompts, credentials, FFmpeg, caches, logs and repository files are forbidden.
+
+ZIP verification rejects traversal, absolute/backslash members, symlinks, duplicates, undeclared files, checksum/size mismatches, malformed manifests, corrupt SQLite and future schemas. Retention only removes recognized backups from the canonical directory. Restore first creates a tokenized plan and then requires its exact confirmation token. It creates and verifies a mandatory pre-action backup, disposes injected database connections, extracts into a private temporary directory, migrates only a copied older schema, validates again and atomically replaces each selected file. There is no UI, scheduler, remote storage or media backup in this sprint.
 
 ## Music Analysis Engine (v0.14.0)
 

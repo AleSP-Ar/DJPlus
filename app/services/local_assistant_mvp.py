@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import logging
 from uuid import uuid4
 
 from .assistant_context import AssistantContextDTO, LibraryContextProvider
@@ -12,6 +13,9 @@ from .provider_adapters import OllamaLocalConfigDTO, OllamaProvider
 from .provider_registry import ProviderRegistry
 from .provider_transport import LocalhostHTTPProviderTransport, ProviderTransport
 from .tool_dispatcher import ToolRegistry
+
+
+_LOGGER = logging.getLogger("djplus.assistant")
 
 
 @dataclass(frozen=True)
@@ -52,6 +56,14 @@ class LocalAssistantMVP:
             raise ValueError("La consulta local es obligatoria.")
         if cancellation_token is not None and not isinstance(cancellation_token, ProviderCancellationToken):
             raise TypeError("cancellation_token debe ser ProviderCancellationToken o nulo.")
+        _LOGGER.info(
+            "Local assistant query started",
+            extra={
+                "event_name": "assistant_query_started",
+                "component": "assistant",
+                "context": {"provider": "ollama", "model": self.config.model},
+            },
+        )
         context = LibraryContextProvider(self._library_service).get_context()
         return self.runtime.process(
             RuntimeRequestDTO(

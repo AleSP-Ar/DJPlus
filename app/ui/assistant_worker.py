@@ -1,6 +1,7 @@
 """Qt worker for non-blocking, cancellable local assistant queries."""
 
 import time
+import logging
 from threading import Lock
 
 from PySide6.QtCore import QObject, Signal, Slot
@@ -8,6 +9,8 @@ from PySide6.QtCore import QObject, Signal, Slot
 from app.services.assistant_provider import ProviderCancellationToken
 from app.services.local_assistant_mvp import LocalAssistantMVP
 from app.services.execution_hardening import ExecutionConcurrencyLimiter, ExecutionEventMetricsDTO, ExecutionHardeningConfigDTO
+
+_LOGGER = logging.getLogger("djplus.assistant")
 
 
 class AssistantWorker(QObject):
@@ -87,8 +90,9 @@ class AssistantWorker(QObject):
                 self.error.emit("La consulta local supero el timeout configurado.")
                 return
             self.result.emit(outcome)
-        except Exception:
+        except Exception as error:
             self._hardening_metrics = ExecutionEventMetricsDTO("assistant_worker", failed=1)
+            _LOGGER.error("Assistant worker failed", exc_info=True, extra={"event_name": "assistant_worker_error", "component": "assistant", "exception_type": type(error).__name__})
             self.error.emit("La consulta local no pudo completarse.")
         finally:
             self._limiter.release()

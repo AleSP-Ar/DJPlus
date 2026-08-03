@@ -1,5 +1,7 @@
 # Arquitectura DJPlus
 
+Version 0.19.0 closes Epic 17: `SettingsService` owns versioned preferences, `AppLoggingService` owns local structured diagnostics, and `BackupRestoreService` owns verified local recovery packages. Their composition remains outside the UI and uses injected paths, loggers and database lifecycle callbacks.
+
 ## Visión general
 
 DJPlus está organizado para separar claramente:
@@ -34,6 +36,20 @@ Los repositories encapsulan las consultas a la base de datos para evitar duplica
 ## Servicios
 
 Los servicios contienen operaciones más complejas como escaneo, análisis y preparación de datos.
+
+### SettingsService (Épica 17)
+
+`SettingsService` es la única frontera persistente de preferencias. Entrega `AppSettingsDTO` inmutable y versionado, usa `%APPDATA%\DJPlus\config.json` por defecto y acepta una ruta inyectada para pruebas. Las secciones general, biblioteca, análisis, FFmpeg, asistente, logging y backup validan campos desconocidos antes de guardarse mediante reemplazo atómico. El servicio no guarda credenciales, no depende de UI ni modifica `MainWindow`.
+
+La configuración se adapta de manera opcional a `FFmpegResolver`, `ExecutionHardeningConfigDTO`, `MusicAnalysisService` y `ProviderConfigDTO`, preservando sus constructores existentes. `AppLoggingService` consume ahora la sección `LoggingSettingsDTO` de manera explícita; backup sigue siendo sólo una preferencia preparada.
+
+### Structured logging and diagnostics (Épica 17)
+
+`AppLoggingService` es el dueño único de un handler rotativo JSONL para la jerarquía `djplus`. `app.main` lo compone, instala de forma explícita hooks de excepciones y lo cierra durante el shutdown. Settings, FFmpeg, análisis, workers, asistente y migraciones usan loggers jerárquicos y nunca configuran handlers. `StructuredLogSanitizer` elimina secretos y rutas sensibles con límites de profundidad/tamaño; la exportación diagnóstica atómica incluye sólo configuración, capacidades y logs recientes sanitizados. `DiagnosticsService` mantiene su rol de métricas read-only y no duplica esta persistencia de soporte.
+
+### Backup and restore (Épica 17)
+
+`BackupRestoreService` compone `SettingsService`, `BackupSettingsDTO`, la ruta SQLite y un logger jerárquico inyectados. `app.database.create_backup_restore_service()` aporta la composición canónica y dispone el engine antes de restore; no ejecuta operaciones automáticamente. Cada ZIP usa la API SQLite de backup, `integrity_check`, manifiesto estricto y checksums. La restauración es una operación explícita de plan/token con backup `pre_action`, verificación reiterada, extracción privada y reemplazo atómico por archivo. Media, rutas de biblioteca, ejecutables, logs completos y secretos quedan fuera del paquete.
 
 ### Multi-format Music Analysis v0.18.0
 

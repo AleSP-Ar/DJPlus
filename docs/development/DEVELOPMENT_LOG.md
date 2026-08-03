@@ -1,5 +1,32 @@
 # Development Log
 
+## 2026-08-03 - v0.19.0 Backup Configuration and Logging
+
+- Epic 17 closes with versioned SettingsService, structured local AppLoggingService and verified BackupRestoreService.
+- Local publication uses one commit and annotated tag only: no GitHub, push, Git LFS or FFmpeg executable in Git.
+- Restore remains intentionally non-visual and requires plan, confirmation, pre-action backup and disposed database connections.
+
+## 2026-08-03 — Épica 17 Sprint 17.3 Backup & Restore Engine
+
+- Se creó `BackupRestoreService` como frontera única para backups ZIP locales, verificados y rotativos mediante las preferencias explícitas de `BackupSettingsDTO`.
+- Las copias SQLite usan `Connection.backup()` e `integrity_check`; los ZIP se escriben temporalmente, se verifican por manifiesto/checksum y se publican de forma atómica.
+- La restauración requiere plan y token, crea un backup preventivo obligatorio, valida/extray únicamente en temporales seguros y reemplaza archivos individualmente de manera atómica.
+- No se incluyen audio, rutas de biblioteca, FFmpeg, caches, repositorio ni secretos; no hay UI, scheduler ni almacenamiento remoto.
+
+## 2026-08-03 — Épica 17 Sprint 17.2 Structured Logging & Diagnostics
+
+- Se incorporó `AppLoggingService`: JSON Lines local, rotación por tamaño, retención, reconfiguración sin handlers duplicados y cierre idempotente, configurado por `LoggingSettingsDTO`.
+- `StructuredLogSanitizer` limita tamaño/profundidad, evita `repr` arbitrario y redacta secretos, prompts/rutas sensibles y datos de ejecutables. No hay telemetría externa.
+- Se integraron eventos seguros de ciclo de vida, settings, FFmpeg, análisis, workers, asistente y migración de base de datos. Los hooks de excepciones son explícitos y preservan el comportamiento previo.
+- La exportación diagnóstica atómica devuelve checksum y manifiesto; sólo contiene datos sanitizados y logs recientes acotados.
+
+## 2026-08-03 — Épica 17 Sprint 17.1 Configuration Foundation
+
+- Se creó `SettingsService` como API canónica para preferencias JSON tipadas, inmutables, versionadas y persistidas atómicamente en `%APPDATA%\DJPlus\config.json`.
+- El esquema actual es `2`; la migración `1 → 2` respalda el archivo antes de completar las confirmaciones y tema de la sección general. Versiones futuras se rechazan y JSON corrupto se respalda antes de volver a defaults seguros.
+- La configuración no contiene secretos. Exportaciones sanitizadas, opciones de asistente sin claves sensibles y errores tipados protegen logs y diagnósticos.
+- Se agregaron adaptadores no invasivos para `FFmpegResolver`, límites de análisis/hardening y `ProviderConfigDTO`; no existe aún UI de Settings ni servicios acoplados a `MainWindow`.
+
 ## 2026-08-03 — v0.18.0 Multi-format Audio Analysis
 
 - Se incorporaron `AudioDecoderProtocol` y `AudioDecoderRegistry`, con decoders PCM por bloques para WAV y AIFF/AIF; el orden contractual es MP3, FLAC, AIFF/AIF y WAV.

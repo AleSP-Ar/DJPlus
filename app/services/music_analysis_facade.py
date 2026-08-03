@@ -2,9 +2,12 @@
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, replace
+import logging
 from threading import Event, Lock, Thread
 
 from .audio_analysis_service import AudioAnalysisError, AudioAnalysisQueryDTO, MusicAnalysisService
+
+_LOGGER = logging.getLogger("djplus.analysis")
 
 
 class MusicAnalysisBatchError(ValueError):
@@ -200,6 +203,7 @@ class MusicAnalysisWorker:
             self.result = self._facade.analyze(query, self._emit_progress)
         except Exception as error:
             self.error = error
+            _LOGGER.error("Music analysis worker failed", exc_info=True, extra={"event_name": "analysis_worker_error", "component": "analysis", "exception_type": type(error).__name__})
             self._emit("error", str(error))
         finally:
             self._finished.set()

@@ -1,6 +1,5 @@
-"""Reserved compatibility module.
+"""Configuration compatibility facade for the canonical SettingsService API."""
 
-Runtime configuration is currently owned by validated service DTOs (scanner,
-provider and worker configuration). This module intentionally exposes no second
-configuration API until a consolidated settings service is approved.
-"""
+from .services.settings_service import AppSettingsDTO, SettingsService
+
+__all__ = ["AppSettingsDTO", "SettingsService"]

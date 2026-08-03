@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from sqlalchemy import create_engine, event
@@ -28,11 +29,28 @@ def enable_sqlite_foreign_keys(connection, _):
     connection.execute("PRAGMA foreign_keys=ON")
 
 SessionLocal = sessionmaker(bind=engine)
+_LOGGER = logging.getLogger("djplus.database")
 
 
 def init_database() -> None:
+    _LOGGER.info(
+        "Database migration started",
+        extra={"event_name": "database_migration_started", "component": "database"},
+    )
     run_migrations(engine)
+    _LOGGER.info(
+        "Database migration completed",
+        extra={"event_name": "database_migration_completed", "component": "database"},
+    )
 
 
 def init_db() -> None:
     init_database()
+
+
+def create_backup_restore_service(settings_service, logging_service=None):
+    """Compose the backup boundary with the canonical database lifecycle."""
+    from app.services.backup_restore_service import BackupRestoreService
+
+    logger = logging_service.get_logger("backup") if logging_service is not None else logging.getLogger("djplus.backup")
+    return BackupRestoreService(settings_service, DATABASE_PATH, logger=logger, close_connections=engine.dispose)

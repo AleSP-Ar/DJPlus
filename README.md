@@ -1,8 +1,15 @@
 # DJPlus
 
-DJPlus v0.18.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
+DJPlus v0.19.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
 
-Estado: v0.18.0 preparada como release candidate local; el commit y tag requieren aprobación explícita. El binario FFmpeg se conserva localmente y se incorpora durante el empaquetado del instalador, no en Git.
+Estado: v0.19.0 preparada para publicación local. El binario FFmpeg se conserva localmente y se incorpora durante el empaquetado del instalador, no en Git.
+
+## Capacidades v0.19.0
+
+- `SettingsService` centraliza preferencias inmutables y versionadas, con migracion `1 -> 2`, validacion estricta, recuperacion controlada y escritura JSON atomica fuera del repositorio.
+- `AppLoggingService` escribe eventos JSON Lines locales, rotativos y sanitizados; soporta hooks explicitos, reconfiguracion segura y diagnosticos atomicos con checksum.
+- `BackupRestoreService` crea ZIPs locales verificables mediante SQLite Backup API, manifest/checksums, retencion y restauracion confirmada con backup preventivo obligatorio.
+- Los backups no incluyen archivos musicales, rutas de biblioteca, secretos, prompts, logs completos ni `ffmpeg.exe`. No hay UI, scheduler, copia remota ni backup de medios en esta version.
 
 ## Capacidades v0.18.0
 
@@ -102,5 +109,17 @@ python -m app.main
 ```
 
 No se requiere ni se realiza una descarga de FFmpeg en tiempo de ejecución. Para actualizar el runtime, seguir el procedimiento obligatorio documentado en `runtime/ffmpeg/SOURCE.txt`, verificar el ZIP antes de extraer, actualizar los manifiestos y ejecutar las pruebas reales MP3/FLAC. El proceso de empaquetado debe comprobar el checksum de `ffmpeg.exe` antes de incluirlo en el instalador.
+
+## Configuración local
+
+`SettingsService` es la frontera canónica de preferencias persistentes. Por defecto usa `%APPDATA%\DJPlus\config.json` en Windows; no guarda credenciales y realiza escrituras JSON atómicas con migraciones versionadas. Las pruebas inyectan una ruta temporal. La configuración puede preparar FFmpeg, límites de análisis y preferencias no secretas del asistente, pero no crea todavía una pantalla de Settings.
+
+## Logging y diagnóstico local
+
+`AppLoggingService` consume explícitamente `LoggingSettingsDTO` y escribe JSON Lines rotativos en `%APPDATA%\DJPlus\logs` por defecto. Cada evento contiene hora UTC, nivel, componente, versión, proceso e hilo; los contextos son pequeños y sanitizados. Claves de credenciales, tokens, prompts, rutas musicales y ejecutables se redactan. La exportación diagnóstica es atómica, acotada y con SHA-256; incluye configuración y capacidades sanitizadas, no la biblioteca, base de datos, audio ni binarios. Consulte [LOGGING_AND_DIAGNOSTICS_DESIGN.md](docs/architecture/LOGGING_AND_DIAGNOSTICS_DESIGN.md).
+
+## Backup y restauración local
+
+`BackupRestoreService` crea ZIPs verificables con una copia consistente SQLite, configuración portable sanitizada, manifiesto y checksums. La restauración exige plan, token de confirmación y un backup preventivo verificado; no existe aún UI ni tarea programada. No se incluyen música, rutas de biblioteca, logs completos, credenciales ni FFmpeg. Consulte [BACKUP_AND_RESTORE_DESIGN.md](docs/architecture/BACKUP_AND_RESTORE_DESIGN.md).
 
 La versión de aplicación se centraliza en `app/version.py`.

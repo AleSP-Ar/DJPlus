@@ -7,6 +7,7 @@ from io import BufferedReader
 from pathlib import Path
 from queue import Empty, Full, Queue
 import hashlib
+import logging
 import os
 import re
 import shutil
@@ -20,6 +21,8 @@ from .audio_decoder import (
     AudioPCMBlockDTO,
     DecodedAudioInfoDTO,
 )
+
+_LOGGER = logging.getLogger("djplus.ffmpeg")
 
 
 class FFmpegProcessError(AudioDecoderError):
@@ -128,7 +131,7 @@ class FFmpegDecoderConfigDTO:
 class FFmpegResolver:
     """Resolve a local executable without changing PATH or installing anything."""
 
-    def __init__(self, config=None, which=None, path_exists=None, bundled_path=None, checksum_path=None):
+    def __init__(self, config=None, which=None, path_exists=None, bundled_path=None, checksum_path=None, allow_path=True, allow_bundled=True):
         self._config = config or FFmpegDecoderConfigDTO()
         if not isinstance(self._config, FFmpegDecoderConfigDTO):
             raise TypeError("FFmpegResolver requiere FFmpegDecoderConfigDTO.")
@@ -136,29 +139,37 @@ class FFmpegResolver:
         self._path_exists = path_exists or (lambda value: Path(value).is_file())
         self._bundled_path = bundled_path or str(Path(__file__).resolve().parents[2] / "runtime" / "ffmpeg" / "ffmpeg.exe")
         self._checksum_path = checksum_path or str(Path(self._bundled_path).with_name("CHECKSUM.sha256"))
+        if not isinstance(allow_path, bool) or not isinstance(allow_bundled, bool):
+            raise TypeError("allow_path y allow_bundled deben ser booleanos.")
+        self._allow_path, self._allow_bundled = allow_path, allow_bundled
 
     def resolve(self):
         configured_error = None
         if self._config.executable_path is not None:
             if self._path_exists(self._config.executable_path):
-                return FFmpegResolutionDTO(self._config.executable_path, "configured")
+                return self._record_resolution(FFmpegResolutionDTO(self._config.executable_path, "configured"))
             configured_error = "La ruta configurada de FFmpeg no es ejecutable."
-        path_executable = self._which("ffmpeg")
+        path_executable = self._which("ffmpeg") if self._allow_path else None
         if path_executable and self._path_exists(path_executable):
-            return FFmpegResolutionDTO(path_executable, "path")
+            return self._record_resolution(FFmpegResolutionDTO(path_executable, "path"))
         bundled_error = None
-        if self._path_exists(self._bundled_path):
+        if self._allow_bundled and self._path_exists(self._bundled_path):
             try:
                 self._verify_bundled_checksum()
             except FFmpegRuntimeIntegrityError as error:
                 bundled_error = str(error)
             else:
-                return FFmpegResolutionDTO(self._bundled_path, "bundled", checksum_verified=True)
-        return FFmpegResolutionDTO(
+                return self._record_resolution(FFmpegResolutionDTO(self._bundled_path, "bundled", checksum_verified=True))
+        return self._record_resolution(FFmpegResolutionDTO(
             None,
             "unavailable",
             configured_error or bundled_error or "FFmpeg no esta disponible en configuracion, PATH ni runtime incluido.",
-        )
+        ))
+
+    @staticmethod
+    def _record_resolution(resolution):
+        _LOGGER.info("FFmpeg resolution completed", extra={"event_name": "ffmpeg_resolution", "component": "ffmpeg", "context": {"origin": resolution.origin, "available": resolution.executable is not None, "checksum_verified": resolution.checksum_verified}})
+        return resolution
 
     def _verify_bundled_checksum(self):
         checksum_file = Path(self._checksum_path)

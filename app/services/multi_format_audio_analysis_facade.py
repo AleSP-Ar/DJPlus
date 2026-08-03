@@ -2,11 +2,14 @@
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+import logging
 
 from .audio_analysis_service import AudioAnalysisError, AudioAnalysisQueryDTO, MusicAnalysisService
 from .audio_decoder import AudioDecoderError, AudioDecoderRegistry, OFFICIAL_AUDIO_FORMAT_ORDER
 from .ffmpeg_audio_decoder import FFmpegAudioDecoder, FFmpegAvailabilityDTO, FFmpegDecoderConfigDTO
 from .music_analysis_facade import MusicAnalysisBatchError, MusicAnalysisBatchQueryDTO, MusicAnalysisFacade
+
+_LOGGER = logging.getLogger("djplus.analysis")
 
 
 @dataclass(frozen=True)
@@ -178,6 +181,7 @@ class MultiFormatAudioAnalysisFacade(MusicAnalysisFacade):
             audio_format = info.audio_format.name
             result = self._music_analysis_service.analyze(AudioAnalysisQueryDTO(filepath, query.cancellation_token))
         except (AudioAnalysisError, AudioDecoderError, OSError, ValueError) as error:
+            _LOGGER.warning("Multiformat analysis failed", extra={"event_name": "analysis_error", "component": "analysis", "context": {"track_id": track_id, "decoder": decoder_name, "exception_type": type(error).__name__}})
             return MultiFormatAudioAnalysisItemDTO(track_id, filepath, "error", audio_format, decoder_name, self._analyzer_version, error=str(error))
         if result.status == "cancelled":
             return MultiFormatAudioAnalysisItemDTO(track_id, filepath, "cancelled", audio_format, decoder_name, self._analyzer_version)
