@@ -23,6 +23,10 @@ The UI communicates through services. Services coordinate application workflows 
 
 The provider layer is DTO-based and uses a registry, capability validation, bounded policy, typed errors and secret redaction. The local MVP permits only HTTP to `localhost` and has no credentials. `ToolRegistry` is allowlisted and schema-validated; the local assistant exposes only `LibraryQueryTool`, resolving natural-language criteria through `LibraryService` without SQL generation or direct repository access. The execution boundary remains simulated and requires explicit confirmation and authorization. `AssistantPanel` delegates local queries to `AssistantWorker` in a `QThread` with cooperative cancellation.
 
+## Advanced Tool Calling (v0.10.0)
+
+`ToolPlanner` creates immutable ordered plans. `ToolPlanExecutor` invokes eligible plan steps only through `ToolDispatcher`; failed dependencies block downstream steps and every outcome is typed as `success`, `failed` or `blocked`. `ToolResultComposer` preserves plan order and creates a deterministic structured explanation. `AssistantRuntime` exposes planning execution and composition only when an optional plan is supplied. These modules do not execute actions, import persistence, or bypass the tool allowlist.
+
 ## Data flow
 
 Library search, sort, and filters flow from `LibraryView` to `LibraryService`, then `TrackRepository`, where SQLite performs the work. `TrackTableModel` retains only fetched rows and asks `LibraryService` for additional pages through `canFetchMore()` and `fetchMore()`.

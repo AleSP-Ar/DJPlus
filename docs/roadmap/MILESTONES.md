@@ -2,6 +2,10 @@
 
 ## Historial
 
+## v0.10.0 release candidate
+
+Advanced Tool Calling — Tool Planner, Tool Plan Executor, dependencias, estados tipados y Tool Result Composer — está preparado para release como `v0.10.0`. Commit y tag continúan pendientes de aprobación explícita.
+
 ## v0.9.0 release candidate
 
 AI Assistant Foundations — Providers, Tool Calling, Execution Framework, Ollama local and Natural Language Library Search — is prepared for release as `v0.9.0`. Commit and tag remain pending explicit approval.

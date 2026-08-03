@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-08-03 — v0.10.0 Advanced Tool Calling
+
+- Se incorporó `ToolPlanner` con planificación determinista de múltiples herramientas y validación de dependencias.
+- Se incorporó `ToolPlanExecutor`, que delega exclusivamente en `ToolDispatcher` y modela pasos `success`, `failed` y `blocked`.
+- Se incorporó `ToolResultComposer` para respuestas estructuradas y deterministas de planes completos, parciales y fallidos.
+- `AssistantRuntime` integra estas capacidades de forma opcional, sin alterar el flujo directo de herramientas.
+- No se ejecutan acciones de escritura ni se agregan accesos a Services, Repository, SQLite, red o UI en la pila de planificación.
+
 ## 2026-08-03 — v0.9.0 AI Assistant Foundations
 
 - Se completó la infraestructura de proveedores: contratos, registro, selección, política de reintentos, errores tipados, redacción de secretos y transporte inyectable.

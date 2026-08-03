@@ -19,6 +19,9 @@ from .prompt_builder import PromptBuilder, PromptDTO
 from .provider_credentials import ProviderCredentialRefDTO
 from .provider_registry import ProviderRegistry
 from .tool_dispatcher import ToolCallDTO, ToolDispatcher, ToolRegistry, ToolResultDTO
+from .tool_plan_executor import ToolPlanExecutionDTO, ToolPlanExecutor
+from .tool_planner import ToolPlanDTO
+from .tool_result_composer import ComposedToolResponseDTO, ToolResultComposer
 
 
 class AssistantRuntimeError(ValueError):
@@ -40,6 +43,7 @@ class RuntimeRequestDTO:
     provider_config: ProviderConfigDTO = field(default_factory=ProviderConfigDTO)
     cancellation_token: ProviderCancellationToken | None = None
     credential_ref: ProviderCredentialRefDTO | None = None
+    tool_plan: ToolPlanDTO | None = None
 
     def __post_init__(self):
         if not isinstance(self.user_query, str) or not self.user_query.strip():
@@ -66,6 +70,8 @@ class RuntimeRequestDTO:
             raise AssistantRuntimeError("cancellation_token debe ser ProviderCancellationToken o nulo.")
         if self.credential_ref is not None and not isinstance(self.credential_ref, ProviderCredentialRefDTO):
             raise AssistantRuntimeError("credential_ref debe ser ProviderCredentialRefDTO o nula.")
+        if self.tool_plan is not None and not isinstance(self.tool_plan, ToolPlanDTO):
+            raise AssistantRuntimeError("tool_plan debe ser ToolPlanDTO o nulo.")
 
 
 @dataclass(frozen=True)
@@ -79,6 +85,8 @@ class RuntimeResultDTO:
     proposed_actions: tuple = ()
     confirmation_result: ConfirmationResultDTO | None = None
     provider_execution: ProviderExecutionResultDTO | None = None
+    tool_plan_execution: ToolPlanExecutionDTO | None = None
+    composed_tool_response: ComposedToolResponseDTO | None = None
 
     def __post_init__(self):
         if self.generated_prompt is not None and not isinstance(self.generated_prompt, PromptDTO):
@@ -93,6 +101,10 @@ class RuntimeResultDTO:
             raise AssistantRuntimeError("La ejecucion del proveedor debe ser ProviderExecutionResultDTO o nula.")
         if self.provider_execution is not None and self.assistant_response is not self.provider_execution.response:
             raise AssistantRuntimeError("La respuesta debe coincidir con la ejecucion del proveedor.")
+        if self.tool_plan_execution is not None and not isinstance(self.tool_plan_execution, ToolPlanExecutionDTO):
+            raise AssistantRuntimeError("tool_plan_execution debe ser ToolPlanExecutionDTO o nula.")
+        if self.composed_tool_response is not None and not isinstance(self.composed_tool_response, ComposedToolResponseDTO):
+            raise AssistantRuntimeError("composed_tool_response debe ser ComposedToolResponseDTO o nula.")
 
 
 class AssistantRuntime:
@@ -108,6 +120,8 @@ class AssistantRuntime:
         provider_registry=None,
         provider_policy=None,
         tool_registry=None,
+        tool_plan_executor=None,
+        tool_result_composer=None,
     ):
         if dispatcher is not None and tool_registry is not None:
             raise TypeError("AssistantRuntime acepta dispatcher o tool_registry, no ambos.")
@@ -116,6 +130,12 @@ class AssistantRuntime:
         self._dispatcher = dispatcher or ToolDispatcher(tool_registry or ToolRegistry())
         if not isinstance(self._dispatcher, ToolDispatcher):
             raise TypeError("AssistantRuntime requiere ToolDispatcher.")
+        self._tool_plan_executor = tool_plan_executor or ToolPlanExecutor(self._dispatcher)
+        if not isinstance(self._tool_plan_executor, ToolPlanExecutor):
+            raise TypeError("AssistantRuntime requiere ToolPlanExecutor.")
+        self._tool_result_composer = tool_result_composer or ToolResultComposer()
+        if not isinstance(self._tool_result_composer, ToolResultComposer):
+            raise TypeError("AssistantRuntime requiere ToolResultComposer.")
         self._prompt_builder = prompt_builder or PromptBuilder(self._dispatcher.registry)
         if not isinstance(self._prompt_builder, PromptBuilder):
             raise TypeError("AssistantRuntime requiere PromptBuilder.")
@@ -147,7 +167,13 @@ class AssistantRuntime:
         if provider_execution is not None and provider_execution.response is not None:
             provider_tool_calls = provider_execution.response.tool_calls
         tool_calls = request.tool_calls or provider_tool_calls
-        tool_results = tuple(self._dispatcher.dispatch(call) for call in tool_calls)
+        tool_plan_execution = self._tool_plan_executor.execute(request.tool_plan) if request.tool_plan is not None else None
+        composed_tool_response = self._tool_result_composer.compose(tool_plan_execution) if tool_plan_execution is not None else None
+        tool_results = (
+            tuple(step.tool_result for step in tool_plan_execution.step_results if step.tool_result is not None)
+            if tool_plan_execution is not None
+            else tuple(self._dispatcher.dispatch(call) for call in tool_calls)
+        )
         proposed_actions = self._store_tool_proposals(tool_results)
         confirmation_result = self._confirm_proposal(request.confirmation_request)
         return RuntimeResultDTO(
@@ -158,6 +184,8 @@ class AssistantRuntime:
             proposed_actions=proposed_actions,
             confirmation_result=confirmation_result,
             provider_execution=provider_execution,
+            tool_plan_execution=tool_plan_execution,
+            composed_tool_response=composed_tool_response,
         )
 
     def _record_user_message(self, request):
