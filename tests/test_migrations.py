@@ -31,7 +31,8 @@ class MigrationTests(unittest.TestCase):
         )
         with engine.connect() as connection:
             versions = connection.execute(text("SELECT version FROM schema_migrations")).scalars().all()
-        self.assertEqual(versions, ["0001_baseline_schema", "0002_import_engine", "0003_track_import_snapshots", "0004_analysis_provenance"])
+        self.assertEqual(versions, ["0001_baseline_schema", "0002_import_engine", "0003_track_import_snapshots", "0004_analysis_provenance", "0005_track_metadata_history"])
+        self.assertIn("track_metadata_history", inspector.get_table_names())
         indexes = {index["name"] for index in inspector.get_indexes("import_items")}
         self.assertIn("ix_import_items_job_status", indexes)
 
@@ -73,4 +74,4 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(track, ("Existing track", "DJ Plus", "existing.mp3", 0))
         with engine.connect() as connection:
             versions = connection.execute(text("SELECT version FROM schema_migrations")).scalars().all()
-        self.assertEqual(versions, ["0001_baseline_schema", "0002_import_engine", "0003_track_import_snapshots", "0004_analysis_provenance"])
+        self.assertEqual(versions, ["0001_baseline_schema", "0002_import_engine", "0003_track_import_snapshots", "0004_analysis_provenance", "0005_track_metadata_history"])

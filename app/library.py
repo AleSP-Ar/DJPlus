@@ -1,4 +1,5 @@
 try:
+    import warnings
     from .database import SessionLocal
     from .database.models import Track
 except ImportError:  # pragma: no cover - fallback for direct execution
@@ -6,6 +7,8 @@ except ImportError:  # pragma: no cover - fallback for direct execution
     from app.database.models import Track
 
 from sqlalchemy import or_
+
+warnings.warn("app.library is a legacy direct-session compatibility API; use LibraryService.", DeprecationWarning, stacklevel=2)
 
 
 def _get_session(session=None):

@@ -7,6 +7,7 @@ MIGRATIONS = (
     ("0002_import_engine", "Create persistent import jobs and items", "_import_engine"),
     ("0003_track_import_snapshots", "Add track import metadata and snapshots", "_track_import_snapshots"),
     ("0004_analysis_provenance", "Add optional local analysis provenance", "_analysis_provenance"),
+    ("0005_track_metadata_history", "Add durable track metadata edit history", "_track_metadata_history"),
 )
 
 
@@ -169,3 +170,7 @@ def _analysis_provenance(connection):
     for name, definition in missing_columns.items():
         if name not in columns:
             connection.execute(text(f"ALTER TABLE tracks ADD COLUMN {name} {definition}"))
+
+def _track_metadata_history(connection):
+    connection.execute(text("CREATE TABLE IF NOT EXISTS track_metadata_history (id INTEGER PRIMARY KEY, track_id INTEGER NOT NULL REFERENCES tracks(id) ON DELETE CASCADE, changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, fields_json TEXT NOT NULL, previous_json TEXT NOT NULL, new_json TEXT NOT NULL, origin VARCHAR(32) NOT NULL, status VARCHAR(16) NOT NULL)"))
+    connection.execute(text("CREATE INDEX IF NOT EXISTS ix_track_metadata_history_track_changed ON track_metadata_history (track_id, changed_at)"))

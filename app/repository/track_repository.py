@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 
 from app.database import SessionLocal
@@ -44,6 +45,23 @@ class TrackRepository:
             setattr(track, field, value)
         self._finish(commit)
         return track
+
+    def update_track_metadata(self, track, values, commit=True):
+        """Apply a validated user-metadata patch inside the caller UnitOfWork."""
+        for field in ("title", "artist", "album", "genre", "rating", "bpm", "key", "energy"):
+            if field in values:
+                setattr(track, field, values[field])
+        self._finish(commit)
+        return track
+
+    def record_metadata_edit(self, track_id, fields, previous, new, origin, status, commit=True):
+        from app.database.models import TrackMetadataHistory
+        entry = TrackMetadataHistory(track_id=track_id, fields_json=json.dumps(tuple(fields)), previous_json=json.dumps(previous), new_json=json.dumps(new), origin=origin, status=status)
+        self.session.add(entry); self._finish(commit); return entry
+
+    def latest_metadata_edit(self, track_id):
+        from app.database.models import TrackMetadataHistory
+        return self.session.query(TrackMetadataHistory).filter_by(track_id=track_id).order_by(TrackMetadataHistory.id.desc()).first()
 
     def create_from_import(self, filepath, metadata, file_size, modified_at, commit=True):
         track = Track(

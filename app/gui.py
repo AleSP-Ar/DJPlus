@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import tkinter as tk
+import warnings
 from tkinter import ttk
+
+warnings.warn("app.gui is a legacy Tkinter compatibility entry point; use app.main.", DeprecationWarning, stacklevel=2)
 
 try:
     from .library import get_track_rows, search_track_rows

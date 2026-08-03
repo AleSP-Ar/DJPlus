@@ -1,10 +1,17 @@
 # DJPlus
 
-DJPlus v0.15.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
+DJPlus v0.16.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
 
-Estado: v0.15.0 preparada como release candidate; el commit y tag requieren aprobación explícita.
+Estado: v0.16.0 preparada como release candidate; el commit y tag requieren aprobación explícita.
 
 ## Capacidades v0.13.0
+
+## Capacidades v0.16.0
+
+- Backend Boundary Cleanup: APIs canónicas, compatibilidad legacy aislada y roadmap histórico señalado.
+- `TrackMetadataEditorService` permite patches individuales y masivos, preview determinista, confirmación y restauración.
+- Historial durable por pista mediante `0005_track_metadata_history`, `TrackMetadataFacade` y herramientas preview/apply.
+- `TrackMetadataPanel` se integra opcionalmente en `MainWindow`. La UI mínima hoy sólo expone título e IDs separados por coma.
 
 ## Capacidades v0.15.0
 

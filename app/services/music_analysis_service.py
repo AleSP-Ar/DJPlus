@@ -115,12 +115,12 @@ class MockAnalyzerProvider(AnalyzerProvider):
             raise UnsupportedAnalysisFeatureError("La feature de análisis no es válida.") from error
 
 
-class MusicAnalysisService:
+class ProviderMusicAnalysisService:
     """Coordinate a provider and validate result ownership without persistence."""
 
     def __init__(self, provider):
         if not isinstance(provider, AnalyzerProvider):
-            raise TypeError("MusicAnalysisService requiere un AnalyzerProvider.")
+            raise TypeError("ProviderMusicAnalysisService requiere un AnalyzerProvider.")
         self.provider = provider
 
     def analyze(self, track, features):
@@ -166,3 +166,8 @@ class MusicAnalysisService:
             result_features.add(result.feature_type)
         if result_features != set(requested):
             raise AnalysisContractError("El proveedor devolvió features repetidas o incompletas.")
+
+
+# Compatibility alias. New public imports must use ProviderMusicAnalysisService;
+# local PCM/WAV callers use AudioFileMusicAnalysisService from app.services.
+MusicAnalysisService = ProviderMusicAnalysisService

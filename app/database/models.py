@@ -217,5 +217,16 @@ class Track(Base):
     playlist_entries = relationship("PlaylistTrack", back_populates="track")
     history_events = relationship("TrackHistory", back_populates="track")
 
+class TrackMetadataHistory(Base):
+    __tablename__ = "track_metadata_history"
+    id = Column(Integer, primary_key=True)
+    track_id = Column(Integer, ForeignKey("tracks.id"), nullable=False)
+    changed_at = Column(DateTime, default=datetime.now, nullable=False)
+    fields_json = Column(String, nullable=False)
+    previous_json = Column(String, nullable=False)
+    new_json = Column(String, nullable=False)
+    origin = Column(String, nullable=False)
+    status = Column(String, nullable=False)
+
     def __repr__(self) -> str:
         return f"<Track {self.artist} - {self.title}>"

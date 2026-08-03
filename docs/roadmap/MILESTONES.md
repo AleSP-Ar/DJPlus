@@ -1,8 +1,12 @@
 # Milestones
 
-## v0.15.0 release candidate
+## v0.16.0 release candidate
 
-Analysis Persistence & Library Enrichment — planificación, políticas, confirmación, persistencia atómica, respaldo/restauración, procedencia y migración `0004` — está preparado para release como `v0.15.0`. Commit y tag continúan pendientes de aprobación explícita.
+Track Metadata Editing — limpieza de fronteras, edición individual/masiva, preview, confirmación, historial durable, restore, migración `0005`, herramientas y panel mínimo — está preparado para release como `v0.16.0`.
+
+## v0.15.0 published
+
+Analysis Persistence & Library Enrichment — planificación, políticas, confirmación, persistencia atómica, respaldo/restauración, procedencia y migración `0004` — publicado como `v0.15.0`.
 
 ## v0.14.0 release candidate
 

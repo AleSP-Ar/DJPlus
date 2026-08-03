@@ -1,5 +1,12 @@
 # Development Log
 
+## 2026-08-03 — v0.16.0 Track Metadata Editing
+
+- Se consolidaron rutas backend legacy sin eliminarlas y se definieron fronteras públicas canónicas.
+- Se incorporó edición de metadata confirmada, preview determinista, historial durable, restore durable y migración `0005`.
+- `TrackMetadataFacade`, herramientas preview/apply y panel mínimo integrado permiten el flujo de edición sin modificar tags de audio.
+- Limitación UI: sólo título e IDs manuales; faltan controles visuales para todos los campos, selección directa y detalle de progreso/error por pista.
+
 ## 2026-08-03 — v0.15.0 Analysis Persistence & Library Enrichment
 
 - `AnalysisChangePlanner` incorpora políticas de escritura, clasificación explicable y vista previa determinista de BPM, key y energía.

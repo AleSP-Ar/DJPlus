@@ -47,6 +47,10 @@ The current analyzer accepts WAV PCM only. BPM and key can be absent when silenc
 
 Migration `0004_analysis_provenance` adds nullable provenance to tracks: `analyzed_at`, `analyzer_version`, and confidence for BPM, key and energy. Older tracks remain valid with NULL values. Batch application isolates each track result. No UI is part of this release; skipped and unchanged fields do not alter metadata or provenance.
 
+## Track Metadata Editing (v0.16.0)
+
+`TrackMetadataEditorService` applies validated metadata patches in one UnitOfWork per track only after an ActionPipeline proposal and matching confirmation. Migration `0005_track_metadata_history` stores old/new values, fields, origin and applied/restored state. `TrackMetadataFacade` reads the current LibraryService query; preview/apply tools remain bounded. MainWindow optionally composes TrackMetadataPanel using the existing LibraryView service. The UI is intentionally minimal: title and comma-separated IDs only, with no direct table selection or detailed per-track progress view.
+
 ## Intelligent Set Builder (v0.13.0)
 
 `SetBuilderFacade` obtiene una sola página de candidatas mediante `LibraryService` y excluye historial reciente mediante `HistoryService`. `SetPlanningEngine` selecciona transiciones deterministas con límites de BPM y energía a través de `RecommendationService`; `EnergyJourneyPlanner` agrega objetivos ascending, descending o arc en las fases warm-up, build, peak y cooldown. El ranking se limita al conjunto de candidatas recuperado, no a toda la biblioteca.

@@ -1,4 +1,5 @@
 import os
+import warnings
 from mutagen import File
 
 try:
@@ -19,6 +20,8 @@ AUDIO_EXTENSIONS = (
     ".aiff",
     ".m4a"
 )
+
+warnings.warn("app.scanner is a legacy direct-persistence compatibility API; use ImportService.", DeprecationWarning, stacklevel=2)
 
 
 def scan_folder(folder_path):

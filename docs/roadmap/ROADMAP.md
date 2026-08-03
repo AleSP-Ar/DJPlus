@@ -1,5 +1,10 @@
 # Roadmap DJPlus
 
+> Historical note: this file describes the original v0.1-v0.8 plan and is not
+> the current delivery status. Releases through v0.15 are published; active
+> v1.0 prioritization is maintained in `BACKEND_FUNCTIONAL_INVENTORY.md` until
+> this roadmap is replaced with an approved forward plan.
+
 ## Hitos propuestos
 
 ### Hito 1 ✅

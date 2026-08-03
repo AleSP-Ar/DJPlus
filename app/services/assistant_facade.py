@@ -61,7 +61,7 @@ class AssistantTool(ABC):
         """Return AssistantToolResultDTO without performing autonomous writes."""
 
 
-class LibraryQueryTool(AssistantTool):
+class LegacyLibraryQueryTool(AssistantTool):
     name = "library_query"
     description = "Consulta estadísticas generales y cantidad de pistas."
     input_schema = {"type": "object", "properties": {}, "additionalProperties": False}
@@ -120,7 +120,7 @@ class PlaylistInsightTool(AssistantTool):
         )
 
 
-class DJCompatibilityTool(AssistantTool):
+class LegacyDJCompatibilityTool(AssistantTool):
     name = "dj_compatibility"
     description = "Consulta compatibilidad determinista entre dos pistas proporcionadas por el llamador."
     input_schema = {
@@ -148,6 +148,12 @@ class DJCompatibilityTool(AssistantTool):
                 "confidence": result.confidence,
             },
         )
+
+
+# Compatibility aliases for the pre-ToolRegistry facade. New tool registration
+# is canonical in library_tools.py and ToolRegistry.
+LibraryQueryTool = LegacyLibraryQueryTool
+DJCompatibilityTool = LegacyDJCompatibilityTool
 
 
 class AssistantFacade:
