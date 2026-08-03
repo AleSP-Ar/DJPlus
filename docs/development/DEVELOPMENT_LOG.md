@@ -1,5 +1,12 @@
 # Development Log
 
+## 2026-08-03 — v0.15.0 Analysis Persistence & Library Enrichment
+
+- `AnalysisChangePlanner` incorpora políticas de escritura, clasificación explicable y vista previa determinista de BPM, key y energía.
+- `AnalysisPersistenceService` exige confirmación mediante `ActionPipeline`, escribe atómicamente por pista y conserva respaldo/restauración tipados en memoria.
+- La migración `0004_analysis_provenance` agrega fecha, versión y confianzas nullable para pistas existentes y nuevas.
+- Los lotes aíslan resultados por pista; no se incorpora UI ni se aplican cambios sin confirmación explícita.
+
 ## 2026-08-03 — v0.14.0 Music Analysis Engine
 
 - Se incorporó análisis local WAV PCM determinista para duración, sample rate, canales, peak, RMS, energía, BPM y tonalidad mayor/menor con confianza.

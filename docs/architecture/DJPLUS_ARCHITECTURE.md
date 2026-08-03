@@ -41,6 +41,12 @@ The provider layer is DTO-based and uses a registry, capability validation, boun
 
 The current analyzer accepts WAV PCM only. BPM and key can be absent when silence, duration or confidence does not support a result. Cancellation occurs between blocks, not by forcefully interrupting a block. Complex mixes, modulation and enharmonic naming remain explicit limitations. No analysis module imports Repository, SQLite, ORM, network or external SDKs.
 
+## Analysis Persistence & Library Enrichment (v0.15.0)
+
+`AnalysisChangePlanner` remains a pure read-only comparison layer. Its deterministic change set can be rendered by `AnalysisChangePreviewTool`, but only `AnalysisPersistenceService` can apply it. That service requires an explicit registered `ActionPipeline` proposal and matching confirmation, writes the selected metadata within one UnitOfWork per track, and stores a typed in-memory backup for restore.
+
+Migration `0004_analysis_provenance` adds nullable provenance to tracks: `analyzed_at`, `analyzer_version`, and confidence for BPM, key and energy. Older tracks remain valid with NULL values. Batch application isolates each track result. No UI is part of this release; skipped and unchanged fields do not alter metadata or provenance.
+
 ## Intelligent Set Builder (v0.13.0)
 
 `SetBuilderFacade` obtiene una sola página de candidatas mediante `LibraryService` y excluye historial reciente mediante `HistoryService`. `SetPlanningEngine` selecciona transiciones deterministas con límites de BPM y energía a través de `RecommendationService`; `EnergyJourneyPlanner` agrega objetivos ascending, descending o arc en las fases warm-up, build, peak y cooldown. El ranking se limita al conjunto de candidatas recuperado, no a toda la biblioteca.

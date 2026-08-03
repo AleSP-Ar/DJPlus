@@ -31,6 +31,20 @@ class TrackRepository:
             pass
         return self.session.query(Track).filter(Track.filepath.in_(candidates)).one_or_none()
 
+    def get_by_id(self, track_id):
+        """Resolve one track for an application service inside its UnitOfWork."""
+        return self.session.get(Track, track_id)
+
+    def update_analysis_metadata(self, track, values, provenance=None, commit=True):
+        """Apply the already-authorized subset of analysis fields atomically."""
+        for field in ("bpm", "key", "energy"):
+            if field in values:
+                setattr(track, field, values[field])
+        for field, value in (provenance or {}).items():
+            setattr(track, field, value)
+        self._finish(commit)
+        return track
+
     def create_from_import(self, filepath, metadata, file_size, modified_at, commit=True):
         track = Track(
             filepath=normalize_filepath(filepath),

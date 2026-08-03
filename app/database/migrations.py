@@ -6,6 +6,7 @@ MIGRATIONS = (
     ("0001_baseline_schema", "Create the v0.5 baseline schema", "_baseline_schema"),
     ("0002_import_engine", "Create persistent import jobs and items", "_import_engine"),
     ("0003_track_import_snapshots", "Add track import metadata and snapshots", "_track_import_snapshots"),
+    ("0004_analysis_provenance", "Add optional local analysis provenance", "_analysis_provenance"),
 )
 
 
@@ -150,6 +151,20 @@ def _track_import_snapshots(connection):
         "sample_rate": "INTEGER",
         "import_file_size": "INTEGER",
         "import_file_modified_at": "DATETIME",
+    }
+    for name, definition in missing_columns.items():
+        if name not in columns:
+            connection.execute(text(f"ALTER TABLE tracks ADD COLUMN {name} {definition}"))
+
+
+def _analysis_provenance(connection):
+    columns = {column["name"] for column in inspect(connection).get_columns("tracks")}
+    missing_columns = {
+        "analyzed_at": "DATETIME",
+        "analyzer_version": "VARCHAR",
+        "bpm_confidence": "FLOAT",
+        "key_confidence": "FLOAT",
+        "energy_confidence": "FLOAT",
     }
     for name, definition in missing_columns.items():
         if name not in columns:

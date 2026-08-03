@@ -25,13 +25,13 @@ class MigrationTests(unittest.TestCase):
         )
         track_columns = {column["name"] for column in inspector.get_columns("tracks")}
         self.assertTrue(
-            {"is_favorite", "genre", "bitrate", "sample_rate", "import_file_size", "import_file_modified_at"}.issubset(
+            {"is_favorite", "genre", "bitrate", "sample_rate", "import_file_size", "import_file_modified_at", "analyzed_at", "analyzer_version", "bpm_confidence", "key_confidence", "energy_confidence"}.issubset(
                 track_columns
             )
         )
         with engine.connect() as connection:
             versions = connection.execute(text("SELECT version FROM schema_migrations")).scalars().all()
-        self.assertEqual(versions, ["0001_baseline_schema", "0002_import_engine", "0003_track_import_snapshots"])
+        self.assertEqual(versions, ["0001_baseline_schema", "0002_import_engine", "0003_track_import_snapshots", "0004_analysis_provenance"])
         indexes = {index["name"] for index in inspector.get_indexes("import_items")}
         self.assertIn("ix_import_items_job_status", indexes)
 
@@ -59,6 +59,11 @@ class MigrationTests(unittest.TestCase):
                 "sample_rate",
                 "import_file_size",
                 "import_file_modified_at",
+                "analyzed_at",
+                "analyzer_version",
+                "bpm_confidence",
+                "key_confidence",
+                "energy_confidence",
             }.issubset(columns)
         )
         with engine.connect() as connection:
@@ -68,4 +73,4 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(track, ("Existing track", "DJ Plus", "existing.mp3", 0))
         with engine.connect() as connection:
             versions = connection.execute(text("SELECT version FROM schema_migrations")).scalars().all()
-        self.assertEqual(versions, ["0001_baseline_schema", "0002_import_engine", "0003_track_import_snapshots"])
+        self.assertEqual(versions, ["0001_baseline_schema", "0002_import_engine", "0003_track_import_snapshots", "0004_analysis_provenance"])

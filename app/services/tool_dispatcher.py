@@ -140,6 +140,7 @@ class ToolRegistry:
         diagnostics_service=None,
         set_builder_facade=None,
         music_analysis_facade=None,
+        analysis_change_planner=None,
     ):
         """Build the standard library-tool allowlist from existing services only."""
         from .library_tools import (
@@ -156,6 +157,9 @@ class ToolRegistry:
             SetBuilderTool,
             MusicAnalysisBatchTool,
         )
+        if analysis_change_planner is not None:
+            from .analysis_change_tool import AnalysisChangePreviewTool
+            tools.append(AnalysisChangePreviewTool(analysis_change_planner))
 
         tools = [
             LibraryQueryTool(library_service),

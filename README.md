@@ -1,10 +1,17 @@
 # DJPlus
 
-DJPlus v0.14.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
+DJPlus v0.15.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
 
-Estado: v0.14.0 preparada como release candidate; el commit y tag requieren aprobación explícita.
+Estado: v0.15.0 preparada como release candidate; el commit y tag requieren aprobación explícita.
 
 ## Capacidades v0.13.0
+
+## Capacidades v0.15.0
+
+- `AnalysisChangePlanner` compara BPM, key y energía con políticas `never_overwrite`, `overwrite_lower_confidence` y `force`, y produce una vista previa determinista explicable.
+- `AnalysisPersistenceService` exige propuesta y confirmación en `ActionPipeline`, aplica cambios atómicos por pista y permite respaldo/restauración transitorios.
+- La migración `0004_analysis_provenance` agrega procedencia nullable: fecha, versión del analizador y confianzas por campo; las pistas antiguas conservan `NULL`.
+- `AnalysisChangePreviewTool` sólo muestra el plan. No se agrega UI en esta versión; lotes aíslan el resultado de cada pista.
 
 ## Capacidades v0.14.0
 

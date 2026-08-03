@@ -1,5 +1,9 @@
 # Milestones
 
+## v0.15.0 release candidate
+
+Analysis Persistence & Library Enrichment — planificación, políticas, confirmación, persistencia atómica, respaldo/restauración, procedencia y migración `0004` — está preparado para release como `v0.15.0`. Commit y tag continúan pendientes de aprobación explícita.
+
 ## v0.14.0 release candidate
 
 Music Analysis Engine — análisis WAV PCM local, energía/RMS, BPM, tonalidad, lotes, worker, herramienta read-only y exportación textual — está preparado para release como `v0.14.0`. Commit y tag continúan pendientes de aprobación explícita.

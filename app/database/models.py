@@ -203,6 +203,11 @@ class Track(Base):
     import_file_modified_at = Column(DateTime, nullable=True)
 
     energy = Column(Integer, default=0)
+    analyzed_at = Column(DateTime, nullable=True)
+    analyzer_version = Column(String, nullable=True)
+    bpm_confidence = Column(Float, nullable=True)
+    key_confidence = Column(Float, nullable=True)
+    energy_confidence = Column(Float, nullable=True)
     rating = Column(Integer, default=0)
     is_favorite = Column(Boolean, default=False, nullable=False)
 
