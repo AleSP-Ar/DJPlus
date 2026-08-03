@@ -39,6 +39,15 @@ class InvalidTool(AssistantTool):
 
 
 class ToolDispatcherTests(unittest.TestCase):
+    def test_default_registers_analysis_preview_after_base_tools(self):
+        from app.services.analysis_change_planner import AnalysisChangePlanner
+        class Library: pass
+        class Playlists: pass
+        class Collections: pass
+        base = ToolRegistry.default(Library(), Playlists(), Collections())
+        registry = ToolRegistry.default(Library(), Playlists(), Collections(), analysis_change_planner=AnalysisChangePlanner())
+        self.assertEqual(base.registered_tool_names(), ("library_query", "playlist", "collection"))
+        self.assertEqual(registry.registered_tool_names(), ("library_query", "playlist", "collection", "analysis_change_preview"))
     def setUp(self):
         self.registry = ToolRegistry([EchoTool(), FailingTool(), InvalidTool()])
         self.dispatcher = ToolDispatcher(self.registry)

@@ -16,6 +16,8 @@ try:
     from app.services.track_metadata_editor import TrackMetadataEditorService
     from app.services.action_pipeline import ActionPipeline
     from app.services.confirmation_manager import ConfirmationManager
+    from app.services.duplicate_detection_service import DuplicateDetectionService
+    from app.services.duplicate_detection_facade import DuplicateDetectionFacade
 except ImportError:  # pragma: no cover - fallback for direct execution
     from ui.library_view import LibraryView
     from ui.collection_panel import CollectionPanel
@@ -26,6 +28,8 @@ except ImportError:  # pragma: no cover - fallback for direct execution
     from app.services.track_metadata_editor import TrackMetadataEditorService
     from app.services.action_pipeline import ActionPipeline
     from app.services.confirmation_manager import ConfirmationManager
+    from app.services.duplicate_detection_service import DuplicateDetectionService
+    from app.services.duplicate_detection_facade import DuplicateDetectionFacade
 
 
 class MainWindow(QMainWindow):
@@ -70,6 +74,14 @@ class MainWindow(QMainWindow):
         content.addLayout(navigation)
 
         self.library_view = library
+        try:
+            self.duplicate_detection_facade = DuplicateDetectionFacade(
+                library.library_service,
+                DuplicateDetectionService(library.library_service),
+            )
+        except Exception:
+            # The integration is optional: an unavailable library must not prevent the UI from opening.
+            self.duplicate_detection_facade = None
         content.addWidget(library, 1)
         layout.addLayout(content, 1)
 

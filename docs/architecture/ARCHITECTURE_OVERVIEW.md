@@ -41,6 +41,12 @@ El análisis local se separa en `MusicAnalysisFacade` (consulta filas mediante `
 
 El soporte actual es WAV PCM. BPM y key pueden ser `None` con confianza insuficiente; modulaciones, mezclas complejas y nombres enarmónicos están fuera de alcance.
 
+### Duplicate Detection v0.17.0
+
+`DuplicateDetectionService` receives tracks only through `LibraryService` and calculates SHA-256 in blocks. It does not import Repository or SQLite directly and never performs file actions. Its groups are deterministic, and recoverable bytes estimate retaining one copy per group.
+
+`FingerprintCache` keys a fingerprint with filepath, size and `mtime_ns`, so any changed snapshot becomes a cache miss. `DuplicateDetectionFacade` reuses the cache and renders text; `DuplicateDetectionWorker` reports progress and cooperative cancellation. The allowlisted tool remains read-only and `MainWindow` only composes the facade optionally. A dedicated visual panel is not part of this release; initial uncached scans of large libraries are linear and I/O-bound.
+
 ## UI
 
 La interfaz se organiza en vistas y widgets reutilizables. La idea es que la capa visual dependa de repositorios y servicios, no de consultas directas a la base.

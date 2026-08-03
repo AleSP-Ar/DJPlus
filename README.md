@@ -1,10 +1,17 @@
 # DJPlus
 
-DJPlus v0.16.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
+DJPlus v0.17.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
 
-Estado: v0.16.0 preparada como release candidate; el commit y tag requieren aprobación explícita.
+Estado: v0.17.0 preparada como release candidate; el commit y tag requieren aprobación explícita.
 
-## Capacidades v0.13.0
+## Capacidades v0.17.0
+
+- `DuplicateDetectionService` calculates block-wise SHA-256 through `LibraryService`, groups matches deterministically and isolates file errors.
+- `FingerprintCache` reuses fingerprints by filepath, size and `mtime_ns`; a size or timestamp change safely invalidates the cache entry.
+- `DuplicateDetectionFacade` provides textual export, while `DuplicateDetectionWorker` reports progress and supports cooperative cancellation without modifying the library.
+- `DuplicateDetectionTool` is optional, allowlisted and read-only. `ToolRegistry.default()` initializes base tools before optional extensions.
+- `MainWindow` optionally composes the duplicate facade without automatic scans. A dedicated visual panel remains pending.
+- No files are deleted, moved, renamed or modified. Recoverable bytes estimate keeping one copy per group; hashing uncached large libraries is I/O-bound and linear in scanned bytes. A cache miss currently delegates the selected scan to canonical hashing.
 
 ## Capacidades v0.16.0
 

@@ -1,8 +1,12 @@
 # Milestones
 
-## v0.16.0 release candidate
+## v0.17.0 release candidate
 
-Track Metadata Editing — limpieza de fronteras, edición individual/masiva, preview, confirmación, historial durable, restore, migración `0005`, herramientas y panel mínimo — está preparado para release como `v0.16.0`.
+Duplicate Detection — block-wise SHA-256, safe file-snapshot cache, deterministic groups, cooperative worker, read-only tool, text export and optional MainWindow integration — is ready as `v0.17.0` release candidate. It does not delete or modify files; a dedicated visual panel remains pending.
+
+## v0.16.0 published
+
+Track Metadata Editing — limpieza de fronteras, edición individual/masiva, preview, confirmación, historial durable, restore, migración `0005`, herramientas y panel mínimo — published as `v0.16.0`.
 
 ## v0.15.0 published
 

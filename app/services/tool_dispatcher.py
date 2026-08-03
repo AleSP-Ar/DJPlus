@@ -141,6 +141,7 @@ class ToolRegistry:
         set_builder_facade=None,
         music_analysis_facade=None,
         analysis_change_planner=None,
+        duplicate_detection_facade=None,
     ):
         """Build the standard library-tool allowlist from existing services only."""
         from .library_tools import (
@@ -157,15 +158,14 @@ class ToolRegistry:
             SetBuilderTool,
             MusicAnalysisBatchTool,
         )
-        if analysis_change_planner is not None:
-            from .analysis_change_tool import AnalysisChangePreviewTool
-            tools.append(AnalysisChangePreviewTool(analysis_change_planner))
-
         tools = [
             LibraryQueryTool(library_service),
             PlaylistTool(playlist_service),
             CollectionTool(collection_service),
         ]
+        if analysis_change_planner is not None:
+            from .analysis_change_tool import AnalysisChangePreviewTool
+            tools.append(AnalysisChangePreviewTool(analysis_change_planner))
         optional_tools = (
             (favorite_service, FavoriteTool),
             (history_service, HistoryTool),
@@ -193,6 +193,9 @@ class ToolRegistry:
             tools.append(SetBuilderTool(set_builder_facade))
         if music_analysis_facade is not None:
             tools.append(MusicAnalysisBatchTool(music_analysis_facade))
+        if duplicate_detection_facade is not None:
+            from .duplicate_detection_tool import DuplicateDetectionTool
+            tools.append(DuplicateDetectionTool(duplicate_detection_facade))
         return cls(tuple(tools))
 
     def register(self, tool):

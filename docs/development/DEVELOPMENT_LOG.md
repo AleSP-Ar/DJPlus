@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-08-03 — v0.17.0 Duplicate Detection
+
+- Added `DuplicateDetectionService`, immutable duplicate DTOs and block-wise SHA-256 behind `LibraryService`.
+- `FingerprintCache` keys values by filepath, size and `mtime_ns`; snapshot changes invalidate safely and delegate to canonical hashing again.
+- `DuplicateDetectionFacade`, cooperative worker, allowlisted read-only tool and textual export detect and explain groups without deleting, moving, renaming or modifying files.
+- `ToolRegistry.default()` now initializes base tools before optional extensions. `MainWindow` exposes the duplicate facade optionally, without a dedicated visual panel.
+- Recoverable bytes retain one copy per group. Hashing remains linear in uncached bytes and can be expensive on large or slow libraries.
+
 ## 2026-08-03 — v0.16.0 Track Metadata Editing
 
 - Se consolidaron rutas backend legacy sin eliminarlas y se definieron fronteras públicas canónicas.
