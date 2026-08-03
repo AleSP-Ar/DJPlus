@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-08-03 — v0.13.0 Intelligent Set Builder
+
+- Se incorporó `SetPlanningEngine` con secuenciación determinista, sin duplicados y políticas de BPM y energía.
+- `EnergyJourneyPlanner` incorpora curvas ascending, descending y arc con fases warm-up, build, peak y cooldown.
+- `SetBuilderFacade` obtiene una página de candidatas mediante `LibraryService`, excluye historial reciente y expone `SetBuilderTool` read-only.
+- Los planes se exportan a texto y `AssistantPanel` puede mostrar la secuencia. No se crean playlists ni se persisten planes.
+- El ranking se limita al conjunto de candidatas recuperado; un plan parcial explica cuando faltan transiciones válidas.
+
 ## 2026-08-03 — v0.12.0 Core Optimization & Hardening
 
 - Cachés locales acotadas, profiling por etapa y métricas tipadas de error, cancelación, timeout y concurrencia.

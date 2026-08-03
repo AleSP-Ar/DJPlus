@@ -1,10 +1,15 @@
 # DJPlus
 
-DJPlus v0.12.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
+DJPlus v0.13.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
 
-Estado: v0.12.0 preparada para revisión de release; el commit y tag requieren aprobación explícita.
+Estado: v0.13.0 preparada para revisión de release; el commit y tag requieren aprobación explícita.
 
-## Capacidades v0.12.0
+## Capacidades v0.13.0
+
+- `SetPlanningEngine` con políticas deterministas de saltos BPM y energía.
+- `EnergyJourneyPlanner` con curvas ascending, descending y arc; fases warm-up, build, peak y cooldown.
+- `SetBuilderFacade` y `SetBuilderTool` read-only con candidatas de `LibraryService`, exclusión de historial y exportación a texto.
+- Integración opcional de secuencias en `AssistantPanel`, sin persistir ni crear playlists.
 
 - Cachés locales acotadas y profiling interno por etapa, sin cachear resultados ni datos vivos.
 - Hardening cooperativo: timeout opcional, cancelación, límites de concurrencia y cierre seguro.

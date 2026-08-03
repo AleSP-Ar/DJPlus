@@ -91,6 +91,12 @@ class AssistantPanel(QWidget):
                     f"#{item.rank} · pista {item.candidate_track_id} · score {item.score} · confianza {item.confidence:.2f}"
                     for item in recommendation_page.recommendations
                 )
+            set_builder_result = tool.result.data_used.get("set_builder_result")
+            if set_builder_result is not None:
+                lines.extend(
+                    f"#{item.position} · pista {item.track_id} · score {item.score} · confianza {item.confidence}"
+                    for item in set_builder_result.sequence
+                )
         self.response_view.setPlainText("\n\n".join(lines) or "Sin respuesta local.")
         self.status_label.setText("Listo")
         self._refresh_diagnostics()

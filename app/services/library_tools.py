@@ -441,6 +441,36 @@ class DiagnosticsTool(AssistantTool):
         return _result("Diagnostico local disponible.", {"health_snapshot": snapshot, "diagnostic_text": snapshot.export_text()})
 
 
+class SetBuilderTool(AssistantTool):
+    """Build a read-only set proposal without creating a playlist."""
+
+    name = "set_builder"
+    description = "Construye una secuencia DJ read-only con curva energetica."
+    input_schema = {"type": "object", "required": ["initial_track"], "properties": {
+        "initial_track": {"type": "object"}, "target_track_count": {"type": "integer"}, "energy_curve": {"type": "string"},
+        "bpm_min": {"type": "number"}, "bpm_max": {"type": "number"}, "key": {"type": "string"}, "genre": {"type": "string"},
+        "favorite": {"type": "boolean"}, "recent_history_limit": {"type": "integer"},
+    }, "additionalProperties": False}
+
+    def __init__(self, set_builder_facade):
+        from .set_builder_facade import SetBuilderFacade
+        if not isinstance(set_builder_facade, SetBuilderFacade):
+            raise TypeError("SetBuilderTool requiere SetBuilderFacade.")
+        self._set_builder_facade = set_builder_facade
+
+    def execute(self, input_data):
+        from .set_builder_facade import SetBuilderQueryDTO
+        payload = dict(input_data or {})
+        if not isinstance(payload.get("initial_track"), dict):
+            raise AssistantError("set_builder requiere initial_track.")
+        payload["initial_track"] = SimpleNamespace(**payload["initial_track"])
+        try:
+            result = self._set_builder_facade.build(SetBuilderQueryDTO(**payload))
+        except (TypeError, ValueError) as error:
+            raise AssistantError(str(error)) from error
+        return _result(result.explanation, {"set_builder_result": result, "set_builder_text": result.export_text()})
+
+
 class PlaylistTool(AssistantTool):
     """Read playlist summaries and emit create proposals without writing."""
 

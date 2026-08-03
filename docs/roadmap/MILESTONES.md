@@ -2,6 +2,10 @@
 
 ## Historial
 
+## v0.13.0 release candidate
+
+Intelligent Set Builder — secuenciación, curvas energéticas, fachada read-only, herramienta y exportación de planes — está preparado para release como `v0.13.0`. Commit y tag continúan pendientes de aprobación explícita.
+
 ## v0.12.0 release candidate
 
 Core Optimization & Hardening — cachés acotadas, profiling, ejecución cooperativa, límites de concurrencia y diagnóstico read-only sin histórico — está preparado para release como `v0.12.0`. Commit y tag continúan pendientes de aprobación explícita.

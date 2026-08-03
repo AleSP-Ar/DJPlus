@@ -33,6 +33,12 @@ The provider layer is DTO-based and uses a registry, capability validation, boun
 
 ## Data flow
 
+## Intelligent Set Builder (v0.13.0)
+
+`SetBuilderFacade` obtiene una sola página de candidatas mediante `LibraryService` y excluye historial reciente mediante `HistoryService`. `SetPlanningEngine` selecciona transiciones deterministas con límites de BPM y energía a través de `RecommendationService`; `EnergyJourneyPlanner` agrega objetivos ascending, descending o arc en las fases warm-up, build, peak y cooldown. El ranking se limita al conjunto de candidatas recuperado, no a toda la biblioteca.
+
+`SetBuilderTool` es opcional y read-only en `ToolRegistry`; `AssistantPanel` puede renderizar la secuencia. Los resultados se exportan a texto y devuelven un prefijo parcial explicado si no hay candidatas válidas. No hay persistencia de planes, Repository, SQLite directo ni creación automática de playlists.
+
 ## Core Optimization & Hardening (v0.12.0)
 
 Los cachés locales retienen únicamente interpretación determinista y topología de dependencias; no retienen filas, historial ni resultados. `ImportWorker`, `AssistantWorker` y `ToolPlanExecutor` admiten límites locales y timeouts cooperativos. Un timeout no termina una tarea por la fuerza: se observa en el siguiente punto cooperativo.
