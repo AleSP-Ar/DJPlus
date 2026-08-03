@@ -2,6 +2,10 @@
 
 ## Historial
 
+## v0.11.0 release candidate
+
+DJ Recommendation Engine — scoring, ranking determinista por página, filtros, exclusión de historial, fachada, herramienta y panel — está preparado para release como `v0.11.0`. Commit y tag continúan pendientes de aprobación explícita.
+
 ## v0.10.0 release candidate
 
 Advanced Tool Calling — Tool Planner, Tool Plan Executor, dependencias, estados tipados y Tool Result Composer — está preparado para release como `v0.10.0`. Commit y tag continúan pendientes de aprobación explícita.

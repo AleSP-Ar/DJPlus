@@ -78,6 +78,12 @@ class AssistantPanel(QWidget):
                 lines.extend(
                     f"- {item.artist} — {item.title}" for item in search_result.page_items
                 )
+            recommendation_page = tool.result.data_used.get("recommendation_page")
+            if recommendation_page is not None:
+                lines.extend(
+                    f"#{item.rank} · pista {item.candidate_track_id} · score {item.score} · confianza {item.confidence:.2f}"
+                    for item in recommendation_page.recommendations
+                )
         self.response_view.setPlainText("\n\n".join(lines) or "Sin respuesta local.")
         self.status_label.setText("Listo")
 

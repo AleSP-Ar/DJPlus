@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 import re
-from types import MappingProxyType
+from types import MappingProxyType, SimpleNamespace
 
 from .assistant_facade import AssistantActionProposalDTO, AssistantError, AssistantTool, AssistantToolResultDTO
 
@@ -333,6 +333,54 @@ class LibraryQueryTool(AssistantTool):
             parts.append("favoritos" if parsed.favorite else "no favoritos")
         return ", ".join(parts) if parts else "texto libre"
 
+
+@dataclass(frozen=True)
+class RecommendationToolInputDTO:
+    current_track: dict
+    bpm_min: float | None = None
+    bpm_max: float | None = None
+    key: str | None = None
+    genre: str | None = None
+    favorite: bool | None = None
+    limit: int = 10
+    recent_history_limit: int = 20
+    load_more: bool = False
+
+    @classmethod
+    def from_input(cls, input_data):
+        payload = dict(input_data or {})
+        allowed = {"current_track", "bpm_min", "bpm_max", "key", "genre", "favorite", "limit", "recent_history_limit", "load_more"}
+        if set(payload) - allowed or "current_track" not in payload or not isinstance(payload["current_track"], dict):
+            raise AssistantError("La recomendacion requiere current_track y solo filtros permitidos.")
+        return cls(**payload)
+
+
+class RecommendationTool(AssistantTool):
+    """Expose paged, explainable recommendations through RecommendationFacade only."""
+
+    name = "recommendation"
+    description = "Recomienda pistas por BPM, key, energia e historial sin crear playlists."
+    input_schema = {"type": "object", "required": ["current_track"], "properties": {
+        "current_track": {"type": "object"}, "bpm_min": {"type": "number"}, "bpm_max": {"type": "number"},
+        "key": {"type": "string"}, "genre": {"type": "string"}, "favorite": {"type": "boolean"},
+        "limit": {"type": "integer"}, "recent_history_limit": {"type": "integer"}, "load_more": {"type": "boolean"},
+    }, "additionalProperties": False}
+
+    def __init__(self, recommendation_facade):
+        self._recommendation_facade = recommendation_facade
+
+    def execute(self, input_data):
+        from .recommendation_facade import RecommendationFacade, RecommendationFacadeQueryDTO
+
+        if not isinstance(self._recommendation_facade, RecommendationFacade):
+            raise AssistantError("RecommendationTool requiere RecommendationFacade.")
+        request = RecommendationToolInputDTO.from_input(input_data)
+        page = self._recommendation_facade.recommend(RecommendationFacadeQueryDTO(
+            current_track=SimpleNamespace(**request.current_track), bpm_min=request.bpm_min, bpm_max=request.bpm_max,
+            key=request.key, genre=request.genre, favorite=request.favorite, limit=request.limit,
+            recent_history_limit=request.recent_history_limit, load_more=request.load_more,
+        ))
+        return _result(page.explanation, {"recommendation_page": page})
 
 class PlaylistTool(AssistantTool):
     """Read playlist summaries and emit create proposals without writing."""

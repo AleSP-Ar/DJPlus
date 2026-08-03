@@ -1,0 +1,139 @@
+"""Read-only paged recommendation orchestration through application services."""
+
+from dataclasses import dataclass
+
+from .recommendation_service import RecommendationQueryDTO, RecommendationService, RankedRecommendationDTO
+
+
+class RecommendationFacadeError(ValueError):
+    """Raised when a read-only recommendation query is invalid."""
+
+
+@dataclass(frozen=True)
+class RecommendationFacadeQueryDTO:
+    current_track: object
+    bpm_min: float | None = None
+    bpm_max: float | None = None
+    key: str | None = None
+    genre: str | None = None
+    favorite: bool | None = None
+    limit: int = 10
+    recent_history_limit: int = 20
+    load_more: bool = False
+
+    def __post_init__(self):
+        track_id = getattr(self.current_track, "id", None)
+        if not isinstance(track_id, int) or track_id < 1:
+            raise RecommendationFacadeError("La pista actual debe tener id positivo.")
+        for name in ("bpm_min", "bpm_max"):
+            value = getattr(self, name)
+            if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0):
+                raise RecommendationFacadeError(f"{name} debe ser BPM positivo o nulo.")
+        if self.bpm_min is not None and self.bpm_max is not None and self.bpm_min > self.bpm_max:
+            raise RecommendationFacadeError("bpm_min no puede superar bpm_max.")
+        if self.key is not None and (not isinstance(self.key, str) or not self.key.strip()):
+            raise RecommendationFacadeError("key debe ser texto no vacio o nulo.")
+        if self.genre is not None and (not isinstance(self.genre, str) or not self.genre.strip()):
+            raise RecommendationFacadeError("genre debe ser texto no vacio o nulo.")
+        if self.favorite is not None and not isinstance(self.favorite, bool):
+            raise RecommendationFacadeError("favorite debe ser booleano o nulo.")
+        if not isinstance(self.limit, int) or not 1 <= self.limit <= 100:
+            raise RecommendationFacadeError("limit debe estar entre 1 y 100.")
+        if not isinstance(self.recent_history_limit, int) or not 0 <= self.recent_history_limit <= 100:
+            raise RecommendationFacadeError("recent_history_limit debe estar entre 0 y 100.")
+        if not isinstance(self.load_more, bool):
+            raise RecommendationFacadeError("load_more debe ser booleano.")
+
+    def filters(self):
+        return {name: value for name, value in {
+            "bpm_min": self.bpm_min,
+            "bpm_max": self.bpm_max,
+            "key": self.key,
+            "genre": self.genre,
+            "favorite": self.favorite,
+        }.items() if value is not None}
+
+
+@dataclass(frozen=True)
+class RecommendationPageDTO:
+    recommendations: tuple[RankedRecommendationDTO, ...]
+    candidate_total: int
+    excluded_recent_track_ids: tuple[int, ...]
+    has_more: bool
+    page_number: int
+    explanation: str
+
+    def __post_init__(self):
+        if not isinstance(self.recommendations, tuple) or not all(isinstance(item, RankedRecommendationDTO) for item in self.recommendations):
+            raise RecommendationFacadeError("Las recomendaciones deben ser DTOs inmutables.")
+        if not isinstance(self.candidate_total, int) or self.candidate_total < 0:
+            raise RecommendationFacadeError("El total de candidatas debe ser entero no negativo.")
+        if not isinstance(self.excluded_recent_track_ids, tuple) or not all(isinstance(value, int) and value > 0 for value in self.excluded_recent_track_ids):
+            raise RecommendationFacadeError("Las exclusiones recientes deben ser ids positivos.")
+        if not isinstance(self.has_more, bool) or not isinstance(self.page_number, int) or self.page_number < 1:
+            raise RecommendationFacadeError("El estado de pagina no es valido.")
+        if not isinstance(self.explanation, str) or not self.explanation.strip():
+            raise RecommendationFacadeError("La explicacion de pagina es obligatoria.")
+
+
+class RecommendationFacade:
+    """Compose LibraryService, HistoryService and RecommendationService without writes."""
+
+    def __init__(self, library_service, history_service, recommendation_service):
+        if not callable(getattr(library_service, "query", None)) or not callable(getattr(library_service, "load_more", None)):
+            raise TypeError("RecommendationFacade requiere LibraryService.")
+        if not callable(getattr(library_service, "count_results", None)):
+            raise TypeError("RecommendationFacade requiere conteo de LibraryService.")
+        if not callable(getattr(history_service, "list_history", None)):
+            raise TypeError("RecommendationFacade requiere HistoryService.")
+        if not isinstance(recommendation_service, RecommendationService):
+            raise TypeError("RecommendationFacade requiere RecommendationService.")
+        self._library_service = library_service
+        self._history_service = history_service
+        self._recommendation_service = recommendation_service
+        self._last_query = None
+        self._page_number = 0
+
+    def recommend(self, query):
+        if not isinstance(query, RecommendationFacadeQueryDTO):
+            raise TypeError("RecommendationFacade.recommend requiere RecommendationFacadeQueryDTO.")
+        if query.load_more:
+            if self._last_query is None:
+                raise RecommendationFacadeError("No hay una consulta previa para cargar mas recomendaciones.")
+            rows, has_more = self._library_service.load_more()
+            active_query = self._last_query
+            self._page_number += 1
+        else:
+            rows, has_more = self._library_service.query(text="", **query.filters())
+            active_query = query
+            self._last_query = query
+            self._page_number = 1
+        if not isinstance(rows, (tuple, list)) or not isinstance(has_more, bool):
+            raise RecommendationFacadeError("LibraryService devolvio una pagina invalida.")
+        total = self._library_service.count_results()
+        if not isinstance(total, int) or total < 0:
+            raise RecommendationFacadeError("LibraryService devolvio un total invalido.")
+        recent_ids = self._recent_track_ids(active_query.recent_history_limit)
+        current_id = active_query.current_track.id
+        candidates = tuple(track for track in rows if getattr(track, "id", None) != current_id and getattr(track, "id", None) not in recent_ids)
+        ranked = self._recommendation_service.recommend(RecommendationQueryDTO(active_query.current_track, candidates, active_query.limit))
+        explanation = self._explanation(active_query, total, len(recent_ids), len(ranked))
+        return RecommendationPageDTO(ranked, total, tuple(sorted(recent_ids)), has_more, self._page_number, explanation)
+
+    def _recent_track_ids(self, limit):
+        if limit == 0:
+            return set()
+        events = self._history_service.list_history(event_type="played", limit=limit)
+        if not isinstance(events, (tuple, list)):
+            raise RecommendationFacadeError("HistoryService devolvio historial invalido.")
+        ids = set()
+        for event in events:
+            track_id = event.get("track_id") if isinstance(event, dict) else getattr(event, "track_id", None)
+            if isinstance(track_id, int) and track_id > 0:
+                ids.add(track_id)
+        return ids
+
+    def _explanation(self, query, total, excluded, returned):
+        filters = query.filters()
+        criteria = ", ".join(f"{name}={value}" for name, value in sorted(filters.items())) or "sin filtros"
+        return f"Candidatas: {total}; filtros: {criteria}; excluidas por historial: {excluded}; recomendaciones en pagina: {returned}."

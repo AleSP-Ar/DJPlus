@@ -27,6 +27,10 @@ The provider layer is DTO-based and uses a registry, capability validation, boun
 
 `ToolPlanner` creates immutable ordered plans. `ToolPlanExecutor` invokes eligible plan steps only through `ToolDispatcher`; failed dependencies block downstream steps and every outcome is typed as `success`, `failed` or `blocked`. `ToolResultComposer` preserves plan order and creates a deterministic structured explanation. `AssistantRuntime` exposes planning execution and composition only when an optional plan is supplied. These modules do not execute actions, import persistence, or bypass the tool allowlist.
 
+## DJ Recommendation Engine (v0.11.0)
+
+`RecommendationScoringEngine` evaluates BPM, key, energy and play history with explicit weighted reasons. `RecommendationService` ranks candidates deterministically; `RecommendationFacade` obtains candidate pages from `LibraryService`, applies optional filters and excludes recently played IDs from `HistoryService`. `RecommendationTool` is read-only and `AssistantPanel` renders rank, score and confidence. Ranking is intentionally per candidate page, not global across the whole library.
+
 ## Data flow
 
 Library search, sort, and filters flow from `LibraryView` to `LibraryService`, then `TrackRepository`, where SQLite performs the work. `TrackTableModel` retains only fetched rows and asks `LibraryService` for additional pages through `canFetchMore()` and `fetchMore()`.

@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-08-03 — v0.11.0 DJ Recommendation Engine
+
+- Se implementó scoring de recomendaciones determinista y explicable por BPM, key, energía e historial.
+- Se incorporó ranking en memoria con desempate estable, límites y confianza.
+- `RecommendationFacade` consulta candidatos mediante `LibraryService`, aplica filtros y excluye historial reciente mediante `HistoryService`.
+- `RecommendationTool` expone resultados read-only mediante `ToolRegistry`; `AssistantPanel` muestra rango, score y confianza.
+- El ranking actual se calcula por página de candidatos. Un ranking global queda diferido a una estrategia explícita de agregación.
+
 ## 2026-08-03 — v0.10.0 Advanced Tool Calling
 
 - Se incorporó `ToolPlanner` con planificación determinista de múltiples herramientas y validación de dependencias.
