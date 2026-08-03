@@ -1,0 +1,8 @@
+Provider: BtbN/FFmpeg-Builds
+Release tag: autobuild-2026-08-02-13-17
+Release URL: https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-08-02-13-17
+Artifact: ffmpeg-N-125907-ga7e72069f1-win64-lgpl.zip
+Artifact URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-02-13-17/ffmpeg-N-125907-ga7e72069f1-win64-lgpl.zip
+Architecture: Windows x64
+Variant: LGPL, non-shared
+Acquisition: development-only, verified before extraction; DJPlus performs no runtime download.

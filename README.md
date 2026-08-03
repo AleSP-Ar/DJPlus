@@ -1,8 +1,17 @@
 # DJPlus
 
-DJPlus v0.17.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
+DJPlus v0.18.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
 
-Estado: v0.17.0 preparada como release candidate; el commit y tag requieren aprobación explícita.
+Estado: v0.18.0 preparada como release candidate local; el commit y tag requieren aprobación explícita. El binario FFmpeg se conserva localmente y se incorpora durante el empaquetado del instalador, no en Git.
+
+## Capacidades v0.18.0
+
+- El orden oficial de formatos es MP3, FLAC, AIFF/AIF y WAV; MP3 es el formato predeterminado. La detección se hace por contenido antes que por extensión.
+- `AudioDecoderProtocol` y `AudioDecoderRegistry` separan el análisis de los decoders. `WAVPCMDecoder` y `AIFFPCMDecoder` procesan PCM nativo por bloques, con memoria acotada y cancelación cooperativa.
+- `FFmpegAudioDecoder` habilita MP3 y FLAC locales por stdout PCM, sin archivos temporales. `FFmpegResolver` prioriza ruta configurada, PATH y luego `runtime/ffmpeg/ffmpeg.exe`; no modifica PATH ni instala o descarga software.
+- `FFmpegCapabilityProbe` valida versión y decoders MP3/FLAC. El runtime bundled se acepta sólo si `CHECKSUM.sha256` verifica `ffmpeg.exe`.
+- `MultiFormatAudioAnalysisFacade` conserva resultados read-only, exportación textual y diagnóstico de formato, decoder, procedencia y capacidades. `MainWindow` lo compone opcionalmente y no inicia análisis automáticos.
+- El runtime local actual es Windows x64, BtbN/FFmpeg-Builds `autobuild-2026-08-02-13-17`, LGPL v3, con `ffmpeg.exe` de 114.9 MB. El ejecutable está ignorado por Git: el desarrollador debe colocarlo en `runtime/ffmpeg/` y el instalador final debe incorporarlo tras verificar su checksum. Los manifiestos versionados fijan origen, versión, licencia y hashes; ver [FFMPEG_DISTRIBUTION_AND_LICENSES.md](docs/architecture/FFMPEG_DISTRIBUTION_AND_LICENSES.md).
 
 ## Capacidades v0.17.0
 
@@ -91,5 +100,7 @@ pip install -r requirements.txt
 ```bash
 python -m app.main
 ```
+
+No se requiere ni se realiza una descarga de FFmpeg en tiempo de ejecución. Para actualizar el runtime, seguir el procedimiento obligatorio documentado en `runtime/ffmpeg/SOURCE.txt`, verificar el ZIP antes de extraer, actualizar los manifiestos y ejecutar las pruebas reales MP3/FLAC. El proceso de empaquetado debe comprobar el checksum de `ffmpeg.exe` antes de incluirlo en el instalador.
 
 La versión de aplicación se centraliza en `app/version.py`.

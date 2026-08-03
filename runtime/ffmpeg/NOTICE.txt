@@ -1,0 +1,8 @@
+This directory contains the Windows x64 FFmpeg executable distributed by BtbN/FFmpeg-Builds.
+
+Source release: autobuild-2026-08-02-13-17
+Artifact: ffmpeg-N-125907-ga7e72069f1-win64-lgpl.zip
+Detected license: GNU Lesser General Public License, Version 3 (see LICENSE.txt copied from the verified artifact).
+
+FFmpeg is Copyright (c) 2000-2026 the FFmpeg developers.
+DJPlus invokes this local executable only; it does not modify PATH, install FFmpeg globally, or download FFmpeg at runtime.

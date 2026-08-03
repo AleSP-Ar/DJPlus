@@ -41,6 +41,9 @@ from .set_planning import SetPlanQueryDTO, SetPlanTrackDTO, SetPlanDTO, SetPlann
 from .energy_journey import EnergyPhaseDTO, EnergyJourneyDTO, SetJourneyPolicyDTO, EnergyJourneyPlanner, EnergyJourneyError
 from .set_builder_facade import SetBuilderQueryDTO, SetBuilderResultDTO, SetBuilderFacade, SetBuilderError
 from .audio_analysis_service import AudioAnalysisQueryDTO, AudioFeaturesDTO, AudioAnalysisResultDTO, AudioAnalyzerProtocol, AudioFeatureExtractorProtocol, PCMFeatureExtractor, PCMKeyAnalyzer, EnergyAnalysisDTO, TempoAnalysisDTO, ChromaAnalysisDTO, KeyAnalysisDTO, MusicAnalysisService as AudioFileMusicAnalysisService, AudioAnalysisError
+from .audio_decoder import OFFICIAL_AUDIO_FORMAT_ORDER, AudioFormatDTO, DecodedAudioInfoDTO, AudioPCMBlockDTO, AudioDecoderProtocol, AudioDecoderRegistry, WAVPCMDecoder, AIFFPCMDecoder, AudioDecoderError, UnsupportedAudioFormatError, CorruptAudioFileError
+from .ffmpeg_audio_decoder import FFmpegResolutionDTO, FFmpegCapabilityDTO, FFmpegAvailabilityDTO, FFmpegDecoderConfigDTO, FFmpegResolver, FFmpegCapabilityProbe, FFmpegAudioDecoder, FFmpegProcessError, FFmpegRuntimeIntegrityError
+from .multi_format_audio_analysis_facade import MultiFormatAudioDiagnosticsDTO, MultiFormatAudioAnalysisItemDTO, MultiFormatAudioAnalysisResultDTO, MultiFormatAudioAnalysisFacade
 from .music_analysis_facade import MusicAnalysisBatchQueryDTO, MusicAnalysisItemResultDTO, MusicAnalysisBatchResultDTO, MusicAnalysisFacade, MusicAnalysisWorker, MusicAnalysisBatchError
 from .analysis_change_planner import AnalysisMetadataDTO, AnalysisChangeDTO, AnalysisChangeSetDTO, AnalysisWritePolicyDTO, AnalysisChangePlanner, AnalysisChangePlanningError
 from .analysis_persistence_service import AnalysisMetadataBackupDTO, AnalysisApplyResultDTO, AnalysisRestoreResultDTO, AnalysisPersistenceService, AnalysisPersistenceError
@@ -70,6 +73,9 @@ __all__.extend(["SetBuilderQueryDTO", "SetBuilderResultDTO", "SetBuilderFacade",
 __all__.extend(["AudioAnalysisQueryDTO", "AudioFeaturesDTO", "AudioAnalysisResultDTO", "AudioAnalyzerProtocol", "AudioFileMusicAnalysisService", "AudioAnalysisError"])
 __all__.extend(["AudioFeatureExtractorProtocol", "PCMFeatureExtractor", "EnergyAnalysisDTO", "TempoAnalysisDTO"])
 __all__.extend(["PCMKeyAnalyzer", "ChromaAnalysisDTO", "KeyAnalysisDTO"])
+__all__.extend(["OFFICIAL_AUDIO_FORMAT_ORDER", "AudioFormatDTO", "DecodedAudioInfoDTO", "AudioPCMBlockDTO", "AudioDecoderProtocol", "AudioDecoderRegistry", "WAVPCMDecoder", "AIFFPCMDecoder", "AudioDecoderError", "UnsupportedAudioFormatError", "CorruptAudioFileError"])
+__all__.extend(["FFmpegResolutionDTO", "FFmpegCapabilityDTO", "FFmpegAvailabilityDTO", "FFmpegDecoderConfigDTO", "FFmpegResolver", "FFmpegCapabilityProbe", "FFmpegAudioDecoder", "FFmpegProcessError", "FFmpegRuntimeIntegrityError"])
+__all__.extend(["MultiFormatAudioDiagnosticsDTO", "MultiFormatAudioAnalysisItemDTO", "MultiFormatAudioAnalysisResultDTO", "MultiFormatAudioAnalysisFacade"])
 __all__.extend(["RecommendationTool", "RecommendationToolInputDTO"])
 __all__.extend(["MusicAnalysisBatchTool", "MusicAnalysisBatchToolInputDTO"])
 __all__.extend(["MusicAnalysisBatchQueryDTO", "MusicAnalysisItemResultDTO", "MusicAnalysisBatchResultDTO", "MusicAnalysisFacade", "MusicAnalysisWorker", "MusicAnalysisBatchError"])

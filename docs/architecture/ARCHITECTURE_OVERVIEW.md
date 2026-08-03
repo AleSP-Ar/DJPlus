@@ -35,11 +35,13 @@ Los repositories encapsulan las consultas a la base de datos para evitar duplica
 
 Los servicios contienen operaciones más complejas como escaneo, análisis y preparación de datos.
 
-### Music Analysis Engine v0.14.0
+### Multi-format Music Analysis v0.18.0
 
 El análisis local se separa en `MusicAnalysisFacade` (consulta filas mediante `LibraryService`), `MusicAnalysisService` (lectura WAV PCM) y `MusicAnalysisWorker` (lote, progreso, concurrencia y cancelación cooperativa). Los DTOs de análisis existen sólo en memoria: no actualizan pistas ni metadata. La herramienta opcional `MusicAnalysisBatchTool` es read-only y el panel sólo presenta sus resultados ya calculados.
 
-El soporte actual es WAV PCM. BPM y key pueden ser `None` con confianza insuficiente; modulaciones, mezclas complejas y nombres enarmónicos están fuera de alcance.
+`AudioDecoderProtocol` y `AudioDecoderRegistry` separan el análisis de los decoders y establecen el orden público MP3, FLAC, AIFF/AIF y WAV. WAV/AIFF/AIF PCM se leen con decoders nativos por bloques. `MultiFormatAudioAnalysisFacade` registra opcionalmente `FFmpegAudioDecoder` para MP3/FLAC, detecta contenido antes que extensión, publica diagnóstico y procedencia por item, y conserva exportación read-only.
+
+`FFmpegResolver` prioriza ruta configurada, PATH y `runtime/ffmpeg/ffmpeg.exe`. El último sólo se ejecuta tras verificar su SHA-256 en `CHECKSUM.sha256`; `FFmpegCapabilityProbe` verifica localmente versión y decoders MP3/FLAC. No se descarga, instala ni modifica PATH. El runtime es Windows x64 de aproximadamente 114.9 MB, se mantiene fuera de Git y debe ser incorporado por el empaquetador tras verificar los manifiestos locales de licencia, origen y checksum. BPM y key pueden ser `None` con confianza insuficiente; modulaciones, mezclas complejas y nombres enarmónicos están fuera de alcance.
 
 ### Duplicate Detection v0.17.0
 

@@ -1,5 +1,9 @@
 # Milestones
 
+## v0.18.0 local release candidate
+
+Multi-format Audio Analysis adds the official MP3, FLAC, AIFF/AIF and WAV decoder order, native PCM decoders, optional FFmpeg MP3/FLAC decoding, local capabilities/diagnostics, bundled checksum verification and optional MainWindow composition. Real MP3/FLAC validation is complete. The Windows x64 runtime remains part of the distributable package but its 114.9 MB executable is intentionally ignored by Git; the local installer build must supply the verified binary and validate its manifest checksum.
+
 ## v0.17.0 release candidate
 
 Duplicate Detection — block-wise SHA-256, safe file-snapshot cache, deterministic groups, cooperative worker, read-only tool, text export and optional MainWindow integration — is ready as `v0.17.0` release candidate. It does not delete or modify files; a dedicated visual panel remains pending.

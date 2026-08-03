@@ -1,4 +1,4 @@
-"""Deterministic local PCM/WAV inspection with no persistence dependency."""
+"""Deterministic local PCM inspection through registered WAV/AIFF decoders."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -6,6 +6,8 @@ from typing import Protocol, runtime_checkable
 from statistics import median, fmean, pstdev
 import math
 import wave
+
+from .audio_decoder import AudioDecoderError, AudioDecoderRegistry, DecodedAudioInfoDTO
 
 
 class AudioAnalysisError(ValueError):
@@ -20,8 +22,6 @@ class AudioAnalysisQueryDTO:
     def __post_init__(self):
         if not isinstance(self.filepath, str) or not self.filepath.strip():
             raise AudioAnalysisError("La ruta de audio es obligatoria.")
-        if Path(self.filepath).suffix.casefold() != ".wav":
-            raise AudioAnalysisError("Solo se admite WAV PCM en el analisis local actual.")
         if self.cancellation_token is not None and not callable(getattr(self.cancellation_token, "is_cancelled", None)):
             raise AudioAnalysisError("El token de cancelacion debe exponer is_cancelled().")
 
@@ -169,36 +169,35 @@ class AudioAnalyzerProtocol(Protocol):
 
 @runtime_checkable
 class AudioFeatureExtractorProtocol(Protocol):
-    """Extract optional PCM features while WaveAudioAnalyzer owns file access."""
+    """Extract optional features from normalized PCM blocks."""
 
     def extract(self, source, query: AudioAnalysisQueryDTO):
         ...
 
 
 class PCMFeatureExtractor:
-    """Block-based RMS and envelope peak estimator for mono or stereo PCM."""
+    """Block-based RMS and envelope peak estimator over normalized PCM blocks."""
 
     block_frames = 1024
 
-    def extract(self, source, query):
-        sample_width, channels, sample_rate = source.getsampwidth(), source.getnchannels(), source.getframerate()
-        if sample_width not in {1, 2, 3, 4}:
-            raise AudioAnalysisError("El ancho de muestra WAV no es compatible.")
+    def extract(self, info, blocks, query):
+        if not isinstance(info, DecodedAudioInfoDTO):
+            raise AudioAnalysisError("El extractor requiere informacion PCM decodificada.")
+        channels, sample_rate = info.channels, info.sample_rate
         envelope, square_sum, sample_count, peak = [], 0.0, 0, 0.0
-        while True:
+        for block in blocks:
             if query.cancellation_token is not None and query.cancellation_token.is_cancelled():
                 return None
-            raw = source.readframes(self.block_frames)
-            if not raw:
-                break
-            values = self._mono_values(raw, sample_width, channels)
+            values = self._mono_block_values(block.samples, channels)
             if not values:
                 continue
             block_square_sum = sum(value * value for value in values)
             envelope.append(math.sqrt(block_square_sum / len(values)))
             square_sum += block_square_sum
             sample_count += len(values)
-            peak = max(peak, self._peak(raw, sample_width))
+            peak = max(peak, max((abs(value) for value in block.samples), default=0.0))
+        if query.cancellation_token is not None and query.cancellation_token.is_cancelled():
+            return None
         rms = math.sqrt(square_sum / sample_count) if sample_count else 0.0
         energy = EnergyAnalysisDTO(round(rms, 6), round(rms * 100, 3), 1.0 if sample_count else 0.0, "Energia normalizada calculada mediante RMS PCM por bloques.")
         tempo = self._tempo(envelope, sample_rate)
@@ -212,6 +211,14 @@ class PCMFeatureExtractor:
             maximum = float((1 << (sample_width * 8 - 1)) - 1)
             samples = [int.from_bytes(raw[index:index + sample_width], "little", signed=True) / maximum for index in range(0, len(raw), sample_width)]
         return tuple(sum(samples[index:index + channels]) / channels for index in range(0, len(samples), channels) if len(samples[index:index + channels]) == channels)
+
+    @staticmethod
+    def _mono_block_values(samples, channels):
+        return tuple(
+            sum(samples[index:index + channels]) / channels
+            for index in range(0, len(samples), channels)
+            if len(samples[index:index + channels]) == channels
+        )
 
     @staticmethod
     def _peak(raw, sample_width):
@@ -255,30 +262,27 @@ class PCMKeyAnalyzer:
     _MAJOR = (6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88)
     _MINOR = (6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17)
 
-    def analyze(self, source, query):
-        width, channels, rate, frame_count = source.getsampwidth(), source.getnchannels(), source.getframerate(), source.getnframes()
-        if width not in {1, 2, 3, 4}:
-            raise AudioAnalysisError("El ancho de muestra WAV no es compatible.")
+    def analyze(self, info, pcm_blocks, query):
+        if not isinstance(info, DecodedAudioInfoDTO):
+            raise AudioAnalysisError("El analizador tonal requiere informacion PCM decodificada.")
+        channels, rate, frame_count = info.channels, info.sample_rate, info.frame_count
         if frame_count / rate < 2:
             return self._empty("Audio demasiado corto para estimar tonalidad con confianza.")
         chroma = [0.0] * 12
-        blocks = 0
-        while True:
+        block_count = 0
+        for block in pcm_blocks:
             if query.cancellation_token is not None and query.cancellation_token.is_cancelled():
                 return None
-            raw = source.readframes(self.block_frames)
-            if not raw:
-                break
-            values = PCMFeatureExtractor._mono_values(raw, width, channels)
+            values = PCMFeatureExtractor._mono_block_values(block.samples, channels)
             if len(values) < 32:
                 continue
-            blocks += 1
+            block_count += 1
             for midi in range(36, 97):
                 frequency = 440.0 * (2 ** ((midi - 69) / 12))
                 if frequency >= rate / 2:
                     continue
                 chroma[midi % 12] += self._power(values, frequency, rate)
-        if not blocks or max(chroma, default=0.0) < 1e-7:
+        if not block_count or max(chroma, default=0.0) < 1e-7:
             return self._empty("Audio silencioso: no hay perfil cromatico suficiente.")
         total = sum(chroma)
         profile = tuple(round(value / total, 6) for value in chroma)
@@ -314,41 +318,40 @@ class PCMKeyAnalyzer:
 
 
 class WaveAudioAnalyzer:
-    """Inspect WAV PCM headers and peak with cooperative cancellation checks."""
+    """Compatibility-named analyzer backed by the registered PCM decoders."""
 
     _CHUNK_FRAMES = 4096
 
-    def __init__(self, feature_extractor=None, key_analyzer=None):
+    def __init__(self, feature_extractor=None, key_analyzer=None, decoder_registry=None):
         self._feature_extractor = feature_extractor or PCMFeatureExtractor()
         self._key_analyzer = key_analyzer or PCMKeyAnalyzer()
+        self._decoder_registry = decoder_registry or AudioDecoderRegistry.default()
         if not isinstance(self._feature_extractor, AudioFeatureExtractorProtocol):
             raise TypeError("WaveAudioAnalyzer requiere AudioFeatureExtractorProtocol.")
         if not callable(getattr(self._key_analyzer, "analyze", None)):
             raise TypeError("WaveAudioAnalyzer requiere un analizador tonal con analyze().")
+        if not isinstance(self._decoder_registry, AudioDecoderRegistry):
+            raise TypeError("WaveAudioAnalyzer requiere AudioDecoderRegistry.")
 
     def analyze(self, query):
-        path = Path(query.filepath)
-        if not path.is_file():
-            raise AudioAnalysisError("El archivo de audio no existe o no es accesible.")
         if self._cancelled(query):
             return AudioAnalysisResultDTO(query, "cancelled", None, "Analisis cancelado antes de leer el archivo.")
         try:
-            with wave.open(str(path), "rb") as source:
-                channels, sample_rate, frame_count = source.getnchannels(), source.getframerate(), source.getnframes()
-                extracted = self._feature_extractor.extract(source, query)
-                if extracted is None:
-                    return AudioAnalysisResultDTO(query, "cancelled", None, "Analisis cancelado cooperativamente.")
-                peak, energy, tempo = extracted
-                source.rewind()
-                tonal = self._key_analyzer.analyze(source, query)
-                if tonal is None:
-                    return AudioAnalysisResultDTO(query, "cancelled", None, "Analisis cancelado cooperativamente.")
-                chroma, key = tonal
+            info, blocks = self._decoder_registry.decode(query.filepath, self._feature_extractor.block_frames, query.cancellation_token)
+            extracted = self._feature_extractor.extract(info, blocks, query)
+            if extracted is None:
+                return AudioAnalysisResultDTO(query, "cancelled", None, "Analisis cancelado cooperativamente.")
+            peak, energy, tempo = extracted
+            _same_info, blocks = self._decoder_registry.decode(query.filepath, self._key_analyzer.block_frames, query.cancellation_token)
+            tonal = self._key_analyzer.analyze(info, blocks, query)
+            if tonal is None:
+                return AudioAnalysisResultDTO(query, "cancelled", None, "Analisis cancelado cooperativamente.")
+            chroma, key = tonal
         except AudioAnalysisError:
             raise
-        except (wave.Error, OSError, EOFError) as error:
-            raise AudioAnalysisError("El archivo WAV esta corrupto o no puede leerse.") from error
-        features = AudioFeaturesDTO(round(frame_count / sample_rate, 6), sample_rate, channels, round(peak, 6), tempo.bpm, key.key, energy.normalized_energy)
+        except AudioDecoderError as error:
+            raise AudioAnalysisError(str(error)) from error
+        features = AudioFeaturesDTO(round(info.duration_seconds, 6), info.sample_rate, info.channels, round(peak, 6), tempo.bpm, key.key, energy.normalized_energy)
         return AudioAnalysisResultDTO(query, "completed", features, f"Duracion, sample rate, canales y peak analizados. {energy.explanation} {tempo.explanation} {key.explanation}", energy, tempo, chroma, key)
 
     @staticmethod
@@ -360,8 +363,10 @@ class WaveAudioAnalyzer:
 class MusicAnalysisService:
     """Coordinate one injected file analyzer without storing any result."""
 
-    def __init__(self, analyzer=None):
-        self._analyzer = analyzer or WaveAudioAnalyzer()
+    def __init__(self, analyzer=None, decoder_registry=None):
+        if analyzer is not None and decoder_registry is not None:
+            raise TypeError("No se puede inyectar analizador y registry a la vez.")
+        self._analyzer = analyzer or WaveAudioAnalyzer(decoder_registry=decoder_registry)
         if not isinstance(self._analyzer, AudioAnalyzerProtocol):
             raise TypeError("MusicAnalysisService requiere AudioAnalyzerProtocol.")
 

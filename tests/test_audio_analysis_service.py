@@ -37,7 +37,7 @@ class AudioAnalysisServiceTests(unittest.TestCase):
         self.assertIsNone(result.features.bpm)
 
     def test_rejects_bad_paths_formats_and_corrupt_wav(self):
-        with self.assertRaises(AudioAnalysisError): AudioAnalysisQueryDTO("missing.mp3")
+        with self.assertRaises(AudioAnalysisError): MusicAnalysisService().analyze(AudioAnalysisQueryDTO("missing.mp3"))
         with self.assertRaises(AudioAnalysisError): MusicAnalysisService().analyze(AudioAnalysisQueryDTO("missing.wav"))
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "bad.wav"; path.write_bytes(b"not wav")

@@ -18,6 +18,7 @@ try:
     from app.services.confirmation_manager import ConfirmationManager
     from app.services.duplicate_detection_service import DuplicateDetectionService
     from app.services.duplicate_detection_facade import DuplicateDetectionFacade
+    from app.services.multi_format_audio_analysis_facade import MultiFormatAudioAnalysisFacade
 except ImportError:  # pragma: no cover - fallback for direct execution
     from ui.library_view import LibraryView
     from ui.collection_panel import CollectionPanel
@@ -30,6 +31,7 @@ except ImportError:  # pragma: no cover - fallback for direct execution
     from app.services.confirmation_manager import ConfirmationManager
     from app.services.duplicate_detection_service import DuplicateDetectionService
     from app.services.duplicate_detection_facade import DuplicateDetectionFacade
+    from app.services.multi_format_audio_analysis_facade import MultiFormatAudioAnalysisFacade
 
 
 class MainWindow(QMainWindow):
@@ -82,6 +84,11 @@ class MainWindow(QMainWindow):
         except Exception:
             # The integration is optional: an unavailable library must not prevent the UI from opening.
             self.duplicate_detection_facade = None
+        try:
+            self.multi_format_audio_analysis_facade = MultiFormatAudioAnalysisFacade(library.library_service)
+        except Exception:
+            # FFmpeg remains optional and an unavailable decoder must not prevent startup.
+            self.multi_format_audio_analysis_facade = None
         content.addWidget(library, 1)
         layout.addLayout(content, 1)
 

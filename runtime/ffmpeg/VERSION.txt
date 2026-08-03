@@ -1,0 +1,7 @@
+ffmpeg version N-125907-ga7e72069f1-20260802
+Release tag: autobuild-2026-08-02-13-17
+Artifact: ffmpeg-N-125907-ga7e72069f1-win64-lgpl.zip
+Artifact SHA-256: a74ad9068f12355118111a57111d548882c0a59f2520ad3e65188aa52a02ff9c
+ffmpeg.exe SHA-256: 499e983f598162cde152e8a411fb0f4baf51e7d59f7c0a9a8c65bf313017be4e
+Version output: ffmpeg version N-125907-ga7e72069f1-20260802 Copyright (c) 2000-2026 the FFmpeg developers
+Built with: gcc 15.2.0 (crosstool-NG 1.28.0.23_185f348)

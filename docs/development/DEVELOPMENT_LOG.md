@@ -1,5 +1,14 @@
 # Development Log
 
+## 2026-08-03 — v0.18.0 Multi-format Audio Analysis
+
+- Se incorporaron `AudioDecoderProtocol` y `AudioDecoderRegistry`, con decoders PCM por bloques para WAV y AIFF/AIF; el orden contractual es MP3, FLAC, AIFF/AIF y WAV.
+- `FFmpegAudioDecoder` agrega MP3/FLAC locales por stdout PCM, con timeout, cancelación, cierre seguro, errores tipados y sin archivos temporales, SDKs, red ni instalación.
+- `FFmpegResolver` aplica prioridad ruta configurada → PATH → runtime bundled. `FFmpegCapabilityProbe` valida versión y decoders; el fallback bundled verifica SHA-256 antes de iniciar el proceso.
+- El runtime Windows x64 proviene de BtbN/FFmpeg-Builds `autobuild-2026-08-02-13-17`, artefacto LGPL no-shared `ffmpeg-N-125907-ga7e72069f1-win64-lgpl.zip`. `LICENSE.txt`, notices, origen, versión, build configuration y checksums quedan junto al binario.
+- `MultiFormatAudioAnalysisFacade` exporta diagnósticos y procedencia por item; `MainWindow` lo compone de forma opcional, sin escaneo automático.
+- El binario de 114.9 MB queda fuera del historial Git y se conserva localmente en `runtime/ffmpeg/ffmpeg.exe`. Los manifiestos quedan versionados y el empaquetador debe validar su checksum antes de incorporar el binario al instalador.
+
 ## 2026-08-03 — v0.17.0 Duplicate Detection
 
 - Added `DuplicateDetectionService`, immutable duplicate DTOs and block-wise SHA-256 behind `LibraryService`.

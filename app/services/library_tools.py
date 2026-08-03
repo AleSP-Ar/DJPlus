@@ -808,7 +808,7 @@ class MusicAnalysisBatchTool(AssistantTool):
     """Expose only transient local file analysis through MusicAnalysisFacade."""
 
     name = "music_analysis_batch"
-    description = "Analiza archivos WAV locales de la biblioteca sin guardar metadatos."
+    description = "Analiza archivos locales soportados de la biblioteca sin guardar metadatos."
     input_schema = {
         "type": "object",
         "properties": {"track_ids": {"type": "array", "items": {"type": "integer"}}, "limit": {"type": "integer"}},

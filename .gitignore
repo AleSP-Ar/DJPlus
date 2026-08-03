@@ -6,3 +6,5 @@ __pycache__/
 *.db
 .env
 .vscode/
+# Local Windows FFmpeg runtime: verified during packaging, never committed.
+runtime/ffmpeg/ffmpeg.exe
