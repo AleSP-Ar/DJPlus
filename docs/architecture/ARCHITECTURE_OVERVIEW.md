@@ -35,6 +35,12 @@ Los repositories encapsulan las consultas a la base de datos para evitar duplica
 
 Los servicios contienen operaciones más complejas como escaneo, análisis y preparación de datos.
 
+### Music Analysis Engine v0.14.0
+
+El análisis local se separa en `MusicAnalysisFacade` (consulta filas mediante `LibraryService`), `MusicAnalysisService` (lectura WAV PCM) y `MusicAnalysisWorker` (lote, progreso, concurrencia y cancelación cooperativa). Los DTOs de análisis existen sólo en memoria: no actualizan pistas ni metadata. La herramienta opcional `MusicAnalysisBatchTool` es read-only y el panel sólo presenta sus resultados ya calculados.
+
+El soporte actual es WAV PCM. BPM y key pueden ser `None` con confianza insuficiente; modulaciones, mezclas complejas y nombres enarmónicos están fuera de alcance.
+
 ## UI
 
 La interfaz se organiza en vistas y widgets reutilizables. La idea es que la capa visual dependa de repositorios y servicios, no de consultas directas a la base.

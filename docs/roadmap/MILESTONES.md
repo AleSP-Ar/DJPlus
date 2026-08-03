@@ -1,5 +1,9 @@
 # Milestones
 
+## v0.14.0 release candidate
+
+Music Analysis Engine — análisis WAV PCM local, energía/RMS, BPM, tonalidad, lotes, worker, herramienta read-only y exportación textual — está preparado para release como `v0.14.0`. Commit y tag continúan pendientes de aprobación explícita.
+
 ## Historial
 
 ## v0.13.0 release candidate

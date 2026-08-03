@@ -33,6 +33,14 @@ The provider layer is DTO-based and uses a registry, capability validation, boun
 
 ## Data flow
 
+## Music Analysis Engine (v0.14.0)
+
+`MusicAnalysisFacade` is a read-only service boundary: it requests library rows through `LibraryService` and delegates each selected filepath to the local `MusicAnalysisService`. The audio service and `PCMFeatureExtractor` inspect WAV PCM blocks for duration, sample rate, channels, peak, RMS, normalized energy and tempo confidence. `PCMKeyAnalyzer` derives a 12-note chroma profile and compares deterministic major/minor templates.
+
+`MusicAnalysisBatchResultDTO` is transient and exportable to text. It never writes results back into tracks. File errors are represented per item, while `MusicAnalysisWorker` provides bounded concurrent execution, progress callbacks and cooperative cancellation. `MusicAnalysisBatchTool` is an optional, allowlisted read-only tool; `AssistantPanel` only renders already-returned results.
+
+The current analyzer accepts WAV PCM only. BPM and key can be absent when silence, duration or confidence does not support a result. Cancellation occurs between blocks, not by forcefully interrupting a block. Complex mixes, modulation and enharmonic naming remain explicit limitations. No analysis module imports Repository, SQLite, ORM, network or external SDKs.
+
 ## Intelligent Set Builder (v0.13.0)
 
 `SetBuilderFacade` obtiene una sola página de candidatas mediante `LibraryService` y excluye historial reciente mediante `HistoryService`. `SetPlanningEngine` selecciona transiciones deterministas con límites de BPM y energía a través de `RecommendationService`; `EnergyJourneyPlanner` agrega objetivos ascending, descending o arc en las fases warm-up, build, peak y cooldown. El ranking se limita al conjunto de candidatas recuperado, no a toda la biblioteca.

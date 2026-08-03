@@ -786,3 +786,46 @@ class MusicAnalysisTool(AssistantTool):
             f"Analisis completado para {len(results)} features.",
             {"track_id": request.track_id, "analysis": values, "provider": results[0].provider if results else None},
         )
+
+
+@dataclass(frozen=True)
+class MusicAnalysisBatchToolInputDTO:
+    track_ids: tuple[int, ...] = ()
+    limit: int = 20
+
+    @classmethod
+    def from_input(cls, input_data):
+        payload = dict(input_data or {})
+        if set(payload) - {"track_ids", "limit"}:
+            raise AssistantError("music_analysis_batch solo acepta track_ids y limit.")
+        track_ids = tuple(payload.get("track_ids", ()))
+        if not all(isinstance(item, int) and item > 0 for item in track_ids):
+            raise AssistantError("track_ids debe contener ids positivos.")
+        return cls(track_ids, payload.get("limit", 20))
+
+
+class MusicAnalysisBatchTool(AssistantTool):
+    """Expose only transient local file analysis through MusicAnalysisFacade."""
+
+    name = "music_analysis_batch"
+    description = "Analiza archivos WAV locales de la biblioteca sin guardar metadatos."
+    input_schema = {
+        "type": "object",
+        "properties": {"track_ids": {"type": "array", "items": {"type": "integer"}}, "limit": {"type": "integer"}},
+        "additionalProperties": False,
+    }
+
+    def __init__(self, music_analysis_facade):
+        from .music_analysis_facade import MusicAnalysisFacade
+        if not isinstance(music_analysis_facade, MusicAnalysisFacade):
+            raise TypeError("MusicAnalysisBatchTool requiere MusicAnalysisFacade.")
+        self._music_analysis_facade = music_analysis_facade
+
+    def execute(self, input_data):
+        from .music_analysis_facade import MusicAnalysisBatchQueryDTO
+        request = MusicAnalysisBatchToolInputDTO.from_input(input_data)
+        try:
+            result = self._music_analysis_facade.analyze(MusicAnalysisBatchQueryDTO(request.track_ids, request.limit))
+        except (TypeError, ValueError) as error:
+            raise AssistantError(str(error)) from error
+        return _result(result.explanation, {"music_analysis_batch": result, "music_analysis_report": result.export_text()})

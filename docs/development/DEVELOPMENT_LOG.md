@@ -1,5 +1,12 @@
 # Development Log
 
+## 2026-08-03 — v0.14.0 Music Analysis Engine
+
+- Se incorporó análisis local WAV PCM determinista para duración, sample rate, canales, peak, RMS, energía, BPM y tonalidad mayor/menor con confianza.
+- `MusicAnalysisFacade` obtiene pistas sólo mediante `LibraryService`, analiza lotes sin persistir ni actualizar metadata y aísla fallos por archivo.
+- `MusicAnalysisWorker`, `MusicAnalysisBatchTool`, exportación a texto e integración opcional con `AssistantPanel` mantienen el flujo read-only.
+- BPM y key quedan en `None` si la evidencia es insuficiente. La cancelación se observa cooperativamente entre bloques PCM; mezclas complejas, modulaciones y enarmónicos quedan fuera del alcance actual.
+
 ## 2026-08-03 — v0.13.0 Intelligent Set Builder
 
 - Se incorporó `SetPlanningEngine` con secuenciación determinista, sin duplicados y políticas de BPM y energía.

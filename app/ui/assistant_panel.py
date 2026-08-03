@@ -97,6 +97,12 @@ class AssistantPanel(QWidget):
                     f"#{item.position} · pista {item.track_id} · score {item.score} · confianza {item.confidence}"
                     for item in set_builder_result.sequence
                 )
+            music_batch = tool.result.data_used.get("music_analysis_batch")
+            if music_batch is not None:
+                lines.extend(
+                    f"Pista {item.track_id}: {item.status} · BPM {item.bpm} · key {item.key} · energia {item.energy}"
+                    for item in music_batch.items
+                )
         self.response_view.setPlainText("\n\n".join(lines) or "Sin respuesta local.")
         self.status_label.setText("Listo")
         self._refresh_diagnostics()

@@ -1,10 +1,19 @@
 # DJPlus
 
-DJPlus v0.13.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
+DJPlus v0.14.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
 
-Estado: v0.13.0 preparada para revisión de release; el commit y tag requieren aprobación explícita.
+Estado: v0.14.0 preparada como release candidate; el commit y tag requieren aprobación explícita.
 
 ## Capacidades v0.13.0
+
+## Capacidades v0.14.0
+
+- `MusicAnalysisService` inspecciona WAV PCM locales de forma determinista: duración, sample rate, canales, peak, RMS y energía normalizada.
+- BPM se estima por envolvente y picos, con confianza explicable; la tonalidad usa perfil cromático y plantillas mayor/menor con confianza explicable.
+- `MusicAnalysisFacade` realiza análisis read-only por lote desde `LibraryService`, aislando errores por archivo y sin actualizar metadata.
+- `MusicAnalysisWorker` aporta progreso, límite de concurrencia, cancelación y cierre cooperativos; `MusicAnalysisBatchTool` devuelve resultados y exportación textual sin acciones.
+- `AssistantPanel` puede mostrar filas de análisis cuando la herramienta se registra opcionalmente.
+- El soporte actual se limita a WAV PCM. BPM y key pueden ser `None`; no se resuelven modulaciones, mezclas complejas ni nombres enarmónicos.
 
 - `SetPlanningEngine` con políticas deterministas de saltos BPM y energía.
 - `EnergyJourneyPlanner` con curvas ascending, descending y arc; fases warm-up, build, peak y cooldown.
