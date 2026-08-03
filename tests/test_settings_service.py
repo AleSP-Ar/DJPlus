@@ -67,9 +67,10 @@ class SettingsServiceTests(unittest.TestCase):
     def test_schema_migration_backs_up_v1_and_rejects_future_versions(self):
         self._write({"schema_version": 1, "general": {"locale": "en-US"}, "library": {"page_size": 25}})
         migrated = self.service.load()
-        self.assertEqual((migrated.schema_version, migrated.general.theme, migrated.library.page_size), (2, "system", 25))
+        self.assertEqual((migrated.schema_version, migrated.general.theme, migrated.library.page_size), (3, "system", 25))
+        self.assertEqual(migrated.preview_player.volume, 0.70)
         self.assertTrue(self.path.with_name("config.json.v1.backup").is_file())
-        self.assertEqual(json.loads(self.path.read_text(encoding="utf-8"))["schema_version"], 2)
+        self.assertEqual(json.loads(self.path.read_text(encoding="utf-8"))["schema_version"], 3)
         self._write({"schema_version": CURRENT_SETTINGS_SCHEMA_VERSION + 1})
         with self.assertRaises(SettingsFutureVersionError):
             SettingsService(self.path).load()
@@ -98,7 +99,15 @@ class SettingsServiceTests(unittest.TestCase):
         self.service.save(self.service.defaults())
         with ThreadPoolExecutor(max_workers=4) as executor:
             values = list(executor.map(lambda _index: self.service.get(), range(20)))
-        self.assertTrue(all(value == values[0] and value.schema_version == 2 for value in values))
+        self.assertTrue(all(value == values[0] and value.schema_version == CURRENT_SETTINGS_SCHEMA_VERSION for value in values))
+
+    def test_preview_player_settings_validate_and_migrate_from_schema_two(self):
+        self._write({"schema_version": 2, "general": {}, "library": {}})
+        migrated = self.service.load()
+        self.assertEqual((migrated.schema_version, migrated.preview_player.volume, migrated.preview_player.output_device_id), (3, 0.70, None))
+        saved = self.service.update({"preview_player": {"volume": 0.25, "output_device_id": "device-a", "output_device_description": "Output A"}})
+        self.assertEqual((saved.preview_player.volume, saved.preview_player.output_device_id), (0.25, "device-a"))
+        with self.assertRaises(SettingsValidationError): self.service.update({"preview_player": {"volume": 1.1}})
 
     def test_ffmpeg_analysis_and_assistant_adapters_preserve_existing_defaults(self):
         configured, system = str(Path(self.temp.name) / "configured.exe"), str(Path(self.temp.name) / "path.exe")

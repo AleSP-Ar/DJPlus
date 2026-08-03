@@ -352,6 +352,11 @@ class BackupRestoreService:
         settings = self._settings_service.get().backup
         protected = {str(Path(item)) for item in protected_paths}
         entries = list(self.list_backups())
+        # Explicitly protected backups consume the normal retention budget first.
+        # Without this priority, several backups created in the same second could
+        # keep the protected item in addition to the configured limit.
+        entries.sort(key=lambda entry: entry.created_at_utc or "", reverse=True)
+        entries.sort(key=lambda entry: entry.filepath not in protected)
         retained, deleted, warnings = [], [], []
         now = self._clock()
         for index, entry in enumerate(entries):

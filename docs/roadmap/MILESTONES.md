@@ -1,5 +1,21 @@
 # Milestones
 
+## v0.20.0 local published - Epic 18 closed
+
+Preview Player closes with a service-only Qt backend, deterministic tests, explicit device/Settings/history integration and a functional bottom bar. The next planned stage is Epic 19 - Global Ranking & DJ Integration; no implementation is included here.
+
+## Épica 18 - Preview Player (Sprint 18.1 en progreso)
+
+Preview Player Core añade backend Qt encapsulado, servicio sin UI, estados, seek, volumen, lifecycle y pruebas deterministas headless. La integración visual, historial, controles y funciones DJ quedan fuera de este sprint.
+
+## Epic 18 Sprint 18.2 in progress
+
+Preview Player now owns device selection, explicit schema-3 preferences, played-history integration and optional MainWindow lifecycle composition. Visual controls, waveform and DJ playback functions remain pending.
+
+## Epic 18 Sprint 18.3 in progress
+
+The functional preview bar is integrated at the bottom of MainWindow. It loads the active library row only by explicit action and offers transport, seek, private volume, output selection and degraded status. Final visual design and DJ features remain out of scope.
+
 ## v0.19.0 local published - Epic 17 closed
 
 Configuration, Logging & Backup Foundation closes with atomic versioned settings, local sanitized JSONL diagnostics and verified SQLite ZIP backups. Restore requires plan/token confirmation and a mandatory pre-action backup; UI, scheduling, remote storage and media copies are out of scope.

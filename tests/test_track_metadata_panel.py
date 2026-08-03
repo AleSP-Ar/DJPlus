@@ -12,6 +12,9 @@ class _Facade:
  def preview(self,q): return SimpleNamespace(preview="1:title=new",backups=())
  def export_preview(self,r): return r.preview
  def export_result(self,r): return "applied"
+class _Preview:
+ def __init__(self): self.closed=False
+ def close(self): self.closed=True
 class TrackMetadataPanelTests(unittest.TestCase):
  @classmethod
  def setUpClass(c): c.app=QApplication.instance() or QApplication([])
@@ -19,3 +22,5 @@ class TrackMetadataPanelTests(unittest.TestCase):
   p=TrackMetadataPanel(_Facade()); p.ids.setText("1"); p.title.setText("New"); p.preview(); self.assertTrue(p.apply_button.isEnabled()); p.apply(); self.assertEqual(p.output.toPlainText(),"applied"); p.close()
  def test_main_window_exposes_optional_metadata_panel(self):
   init_database(); window=MainWindow(); self.assertTrue(hasattr(window,"track_metadata_panel")); window.close()
+ def test_main_window_closes_injected_optional_preview_player(self):
+  init_database(); preview=_Preview(); window=MainWindow(preview_player_service=preview); window.close(); self.assertTrue(preview.closed)

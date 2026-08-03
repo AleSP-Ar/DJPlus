@@ -1,5 +1,29 @@
 # Development Log
 
+## 2026-08-03 - v0.20.0 Preview Player
+
+- Épica 18 queda cerrada con Preview Player Core, selección de dispositivo, Settings schema 3, historial `played` confirmado y la barra funcional integrada en MainWindow.
+- La publicación es local mediante un único commit y tag anotado; no usa GitHub, push, Git LFS ni versiona `runtime/ffmpeg/ffmpeg.exe`.
+- Próxima etapa planificada: Épica 19 — Global Ranking & DJ Integration, sin implementación iniciada.
+
+## 2026-08-03 - Epic 18 Sprint 18.3 Functional Preview Player Visual Integration
+
+- Added `PreviewPlayerBar` as a service-only persistent bottom bar with explicit library load, transport, seek, volume, output-device selection, safe status/errors and accessibility basics.
+- MainWindow composes the optional bar without direct Qt Multimedia access. The UI trusts backend-confirmed service state and does not write played history itself.
+- Automated coverage remains headless and deterministic; the manual helper now opens a file chooser for optional audible checks.
+
+## 2026-08-03 - Epic 18 Sprint 18.2 Device Selection, Playback History & Application Integration
+
+- Added serializable output-device selection/fallback and explicit Settings schema 3 preferences with migration `1 -> 2 -> 3`.
+- Added a once-per-load, backend-confirmed `played` history port with isolated history failures.
+- MainWindow now accepts and safely closes an optional player service without adding playback controls.
+
+## 2026-08-03 - Épica 18 Sprint 18.1 Preview Player Core
+
+- Se creó un núcleo de preescucha independiente de UI con protocolo de backend, estados tipados, DTOs inmutables y backend determinista sin audio para pruebas.
+- `QtMultimediaPlaybackBackend` encapsula `QMediaPlayer` y `QAudioOutput`, mientras `PreviewPlayerService` valida archivos, seek, volumen, callbacks, cierre y logs sanitizados.
+- No hay todavía controles visuales, reproducción automática, historial de `played`, dispositivo persistido, FFmpeg de reproducción ni funciones de mezcla DJ.
+
 ## 2026-08-03 - v0.19.0 Backup Configuration and Logging
 
 - Epic 17 closes with versioned SettingsService, structured local AppLoggingService and verified BackupRestoreService.

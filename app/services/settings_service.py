@@ -18,7 +18,7 @@ from .execution_hardening import ExecutionHardeningConfigDTO
 from .ffmpeg_audio_decoder import FFmpegDecoderConfigDTO, FFmpegResolver
 
 
-CURRENT_SETTINGS_SCHEMA_VERSION = 2
+CURRENT_SETTINGS_SCHEMA_VERSION = 3
 _SENSITIVE_MARKERS = ("api_key", "apikey", "token", "secret", "password", "credential", "private_key")
 _KNOWN_EXTENSIONS = (".mp3", ".flac", ".aif", ".aiff", ".wav", ".m4a")
 _LOGGER = logging.getLogger("djplus.settings")
@@ -178,6 +178,25 @@ class AssistantSettingsDTO:
 
 
 @dataclass(frozen=True)
+class PreviewPlayerSettingsDTO:
+    """Persisted session preferences; device IDs are plain serialized strings."""
+
+    volume: float = 0.70
+    output_device_id: str | None = None
+    output_device_description: str | None = None
+
+    def __post_init__(self):
+        if not isinstance(self.volume, (int, float)) or isinstance(self.volume, bool) or not 0.0 <= float(self.volume) <= 1.0:
+            raise SettingsValidationError("preview_player.volume debe estar entre 0.0 y 1.0.")
+        object.__setattr__(self, "volume", float(self.volume))
+        for name in ("output_device_id", "output_device_description"):
+            value = getattr(self, name)
+            if value is not None and (not isinstance(value, str) or not value.strip() or len(value) > 512):
+                raise SettingsValidationError(f"preview_player.{name} debe ser texto acotado o nulo.")
+            if isinstance(value, str): object.__setattr__(self, name, value.strip())
+
+
+@dataclass(frozen=True)
 class LoggingSettingsDTO:
     level: str = "INFO"
     directory: str = "logs"
@@ -222,6 +241,7 @@ class AppSettingsDTO:
     analysis: AnalysisSettingsDTO = AnalysisSettingsDTO()
     ffmpeg: FFmpegSettingsDTO = FFmpegSettingsDTO()
     assistant: AssistantSettingsDTO = AssistantSettingsDTO()
+    preview_player: PreviewPlayerSettingsDTO = PreviewPlayerSettingsDTO()
     logging: LoggingSettingsDTO = LoggingSettingsDTO()
     backup: BackupSettingsDTO = BackupSettingsDTO()
 
@@ -230,7 +250,7 @@ class AppSettingsDTO:
             raise SettingsValidationError("schema_version no coincide con la version actual.")
         for value, expected in (
             (self.general, GeneralSettingsDTO), (self.library, LibrarySettingsDTO), (self.analysis, AnalysisSettingsDTO),
-            (self.ffmpeg, FFmpegSettingsDTO), (self.assistant, AssistantSettingsDTO),
+            (self.ffmpeg, FFmpegSettingsDTO), (self.assistant, AssistantSettingsDTO), (self.preview_player, PreviewPlayerSettingsDTO),
             (self.logging, LoggingSettingsDTO), (self.backup, BackupSettingsDTO),
         ):
             if not isinstance(value, expected):
@@ -372,7 +392,7 @@ class SettingsService:
             return config
         if version != CURRENT_SETTINGS_SCHEMA_VERSION:
             raise SettingsMigrationError("La configuracion requiere una migracion controlada.")
-        allowed = {"schema_version", "general", "library", "analysis", "ffmpeg", "assistant", "logging", "backup"}
+        allowed = {"schema_version", "general", "library", "analysis", "ffmpeg", "assistant", "preview_player", "logging", "backup"}
         self._reject_unknown(raw, allowed, "raiz")
         defaults = self.defaults()
         return AppSettingsDTO(
@@ -381,6 +401,7 @@ class SettingsService:
             analysis=self._section(raw.get("analysis", {}), AnalysisSettingsDTO, defaults.analysis, "analysis"),
             ffmpeg=self._section(raw.get("ffmpeg", {}), FFmpegSettingsDTO, defaults.ffmpeg, "ffmpeg"),
             assistant=self._assistant_section(raw.get("assistant", {}), defaults.assistant),
+            preview_player=self._section(raw.get("preview_player", {}), PreviewPlayerSettingsDTO, defaults.preview_player, "preview_player"),
             logging=self._section(raw.get("logging", {}), LoggingSettingsDTO, defaults.logging, "logging"),
             backup=self._section(raw.get("backup", {}), BackupSettingsDTO, defaults.backup, "backup"),
         )
@@ -454,11 +475,14 @@ class SettingsService:
     @staticmethod
     def _migrate_once(version, raw):
         migrated = json.loads(json.dumps(raw))
-        if version != 1:
+        if version == 1:
+            general = migrated.setdefault("general", {})
+            if not isinstance(general, dict):
+                raise SettingsMigrationError("La seccion general antigua es invalida.")
+            general.setdefault("theme", "system")
+            general.setdefault("confirm_dangerous_actions", True)
+        elif version == 2:
+            migrated.setdefault("preview_player", {"volume": 0.70, "output_device_id": None, "output_device_description": None})
+        else:
             raise SettingsMigrationError(f"No existe migracion desde schema_version {version}.")
-        general = migrated.setdefault("general", {})
-        if not isinstance(general, dict):
-            raise SettingsMigrationError("La seccion general antigua es invalida.")
-        general.setdefault("theme", "system")
-        general.setdefault("confirm_dangerous_actions", True)
         return migrated

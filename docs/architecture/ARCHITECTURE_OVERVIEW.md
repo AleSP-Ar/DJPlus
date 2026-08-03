@@ -1,6 +1,18 @@
 # Arquitectura DJPlus
 
+### v0.20.0 - Preview Player (Épica 18 cerrada)
+
+La preescucha local se organiza como `PreviewPlayerService` sobre `AudioPlaybackBackendProtocol`. El adaptador Qt encapsula multimedia, el backend determinista sirve a pruebas sin audio y `PreviewPlayerBar` consume únicamente el servicio. La composición inyecta Settings e historial, mientras MainWindow conserva el ciclo de vida. La próxima etapa es Épica 19 — Global Ranking & DJ Integration.
+
+### Preview Player Core (Épica 18.1)
+
+`PreviewPlayerService` es una frontera de servicios sin widgets: depende sólo de `AudioPlaybackBackendProtocol`, expone snapshots inmutables y recibe callbacks de eventos. `QtMultimediaPlaybackBackend` encapsula los objetos Qt y `DeterministicPlaybackBackend` permite pruebas sin salida audible. La UI no compone ni controla aún este servicio; futuros consumidores deberán respetar el hilo Qt y cerrar el servicio antes de liberar la aplicación.
+
 Version 0.19.0 closes Epic 17: `SettingsService` owns versioned preferences, `AppLoggingService` owns local structured diagnostics, and `BackupRestoreService` owns verified local recovery packages. Their composition remains outside the UI and uses injected paths, loggers and database lifecycle callbacks.
+
+Sprint 18.2 extends preview composition with `AudioOutputDeviceDTO` instead of Qt device objects, Settings schema 3 preferences and `PlaybackHistoryPortProtocol`. Device fallback is configured ID, description, default output and controlled degraded state. MainWindow only owns optional lifecycle; it has no `QMediaPlayer`, `QAudioOutput` or playback UI.
+
+Sprint 18.3 adds `PreviewPlayerBar` under `app/ui/widgets/`. The widget consumes only `PreviewPlayerService` events through a Qt signal and renders the persistent bottom controls. `LibraryView` emits the active model row through an explicit load button, while MainWindow adapts it without another library lookup. The UI owns no multimedia object and does not record history.
 
 ## Visión general
 

@@ -5,9 +5,10 @@ from PySide6.QtWidgets import (
     QTableView,
     QLabel,
     QHeaderView,
+    QPushButton,
 )
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 
 try:
     from ..services.library_service import LibraryService
@@ -20,6 +21,8 @@ except ImportError:  # pragma: no cover - fallback for direct execution
 
 
 class LibraryView(QWidget):
+
+    preview_track_requested = Signal(object)
 
     def __init__(self):
         super().__init__()
@@ -56,17 +59,24 @@ class LibraryView(QWidget):
         selection.selectionChanged.connect(self.on_selection_changed)
 
         self.info_label = QLabel("Selecciona una pista")
+        self.load_preview_button = QPushButton("Cargar en reproductor")
+        self.load_preview_button.setAccessibleName("Cargar pista seleccionada en reproductor")
+        self.load_preview_button.setToolTip("Carga la fila activa en la preescucha sin reproducirla")
+        self.load_preview_button.setEnabled(False)
+        self.load_preview_button.setVisible(False)
 
         self.layout.addWidget(self.counter)
         self.layout.addWidget(self.search)
         self.layout.addWidget(self.table)
         self.layout.addWidget(self.info_label)
+        self.layout.addWidget(self.load_preview_button)
 
         self.setLayout(self.layout)
 
         self.search.textChanged.connect(
             self.filter_tracks
         )
+        self.load_preview_button.clicked.connect(self.request_preview_load)
 
         self.load_tracks()
 
@@ -111,12 +121,28 @@ class LibraryView(QWidget):
 
         if not indexes:
             self.info_label.setText("Selecciona una pista")
+            self.load_preview_button.setEnabled(False)
             return
 
         track = self.model.track_at(indexes[0].row())
 
         if track:
             self.history_service.record_track_selected(track.id)
+            self.load_preview_button.setEnabled(bool(getattr(track, "id", None) is not None and getattr(track, "filepath", None)))
             self.info_label.setText(
                 f"{track.artist or 'Desconocido'} - {track.title or 'Sin título'}"
             )
+
+    def set_preview_player_available(self, available):
+        self.load_preview_button.setVisible(bool(available))
+        if not available:
+            self.load_preview_button.setEnabled(False)
+
+    def request_preview_load(self):
+        """Emit the active model item; consumers do not re-query the library."""
+        index = self.table.currentIndex()
+        track = self.model.track_at(index.row()) if index.isValid() else None
+        if track is None or getattr(track, "id", None) is None or not getattr(track, "filepath", None):
+            self.info_label.setText("Selecciona una pista valida para cargar")
+            return
+        self.preview_track_requested.emit(track)

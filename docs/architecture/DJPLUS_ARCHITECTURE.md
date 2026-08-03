@@ -1,5 +1,9 @@
 # DJPlus Architecture — v0.5.0 Release Candidate (pending approval)
 
+## v0.20.0 Epic 18 closure
+
+Epic 18 provides local preview playback through `PreviewPlayerService` and `AudioPlaybackBackendProtocol`. Qt Multimedia is hidden in its adapter, Settings and History are injected at composition, and `PreviewPlayerBar` is a UI-only service consumer. Explicit library loading prevents autoplay; output fallback and degraded mode keep the rest of the application available. The next roadmap item is Epic 19 - Global Ranking & DJ Integration.
+
 ## v0.19.0 Epic 17 closure
 
 Epic 17 adds local configuration, structured diagnostics and verified backup/restore foundations. The UI does not configure settings, log handlers or restore operations: composition injects settings, logger and database lifecycle callbacks. Recovery packages are local ZIPs with SQLite backup API, integrity validation, manifest/checksums and confirmed pre-action-protected restore. The next roadmap item is Epic 18 - Preview Player; it is not implemented here.
@@ -39,7 +43,7 @@ The provider layer is DTO-based and uses a registry, capability validation, boun
 
 ## Configuration Foundation (Epic 17)
 
-`SettingsService` owns user preferences only. Its immutable `AppSettingsDTO` has schema version 2 and sections for general UI readiness, library discovery, analysis limits, FFmpeg resolution policy, non-secret assistant preferences, logging and backup readiness. It writes atomically to `%APPDATA%\DJPlus\config.json` by default and accepts an explicit path for tests. No setting stores an API key, token, password or credential reference.
+`SettingsService` owns user preferences only. Its immutable `AppSettingsDTO` has schema version 3 and sections for general UI readiness, library discovery, analysis limits, FFmpeg resolution policy, non-secret assistant preferences, preview player, logging and backup readiness. It writes atomically to `%APPDATA%\DJPlus\config.json` by default and accepts an explicit path for tests. No setting stores an API key, token, password or credential reference.
 
 Settings adapters are opt-in: they create compatible `FFmpegDecoderConfigDTO`/`FFmpegResolver`, analysis hardening limits, local analysis services and provider request configuration. Existing constructors preserve their defaults and no service queries `SettingsService` implicitly. Schema `1 → 2` is a small ordered migration with backup; future versions are rejected. Backup remains configuration only.
 

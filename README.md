@@ -1,15 +1,37 @@
 # DJPlus
 
-DJPlus v0.19.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
+DJPlus v0.20.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
 
-Estado: v0.19.0 preparada para publicación local. El binario FFmpeg se conserva localmente y se incorpora durante el empaquetado del instalador, no en Git.
+Estado: v0.20.0 preparada para publicación local. El binario FFmpeg se conserva localmente y se incorpora durante el empaquetado del instalador, no en Git.
 
-## Capacidades v0.19.0
+## Capacidades v0.20.0
+
+- Épica 18 cierra el Preview Player local: backend Qt aislado, backend determinista sin audio, dispositivos serializados, Settings schema 3 y registro `played` una vez por carga confirmada.
+- `PreviewPlayerBar` ofrece carga explícita desde la fila activa de biblioteca, transporte, seek, volumen privado, selección de salida, estados y errores seguros. No hay autoplay ni rutas visibles.
+- El modo degradado mantiene DJPlus y la biblioteca operativos sin Qt Multimedia o sin dispositivo. Waveform, mezcla, pitch, tempo y el rediseño visual definitivo permanecen fuera de alcance.
 
 - `SettingsService` centraliza preferencias inmutables y versionadas, con migracion `1 -> 2`, validacion estricta, recuperacion controlada y escritura JSON atomica fuera del repositorio.
 - `AppLoggingService` escribe eventos JSON Lines locales, rotativos y sanitizados; soporta hooks explicitos, reconfiguracion segura y diagnosticos atomicos con checksum.
 - `BackupRestoreService` crea ZIPs locales verificables mediante SQLite Backup API, manifest/checksums, retencion y restauracion confirmada con backup preventivo obligatorio.
 - Los backups no incluyen archivos musicales, rutas de biblioteca, secretos, prompts, logs completos ni `ffmpeg.exe`. No hay UI, scheduler, copia remota ni backup de medios en esta version.
+
+## Preview Player Core (Épica 18.1)
+
+- `PreviewPlayerService` ofrece preescucha local mediante un protocolo de backend: cargar, reproducir, pausar, reanudar, detener, seek, volumen, estado y cierre seguro.
+- `QtMultimediaPlaybackBackend` encapsula `QMediaPlayer` y `QAudioOutput`; el backend determinista permite pruebas headless sin emitir audio. Soporta inicialmente MP3, FLAC, AIFF/AIF y WAV según codecs de Qt/sistema.
+- Este sprint no agrega controles visuales, reproducción automática, historial persistente, mezcla ni funciones DJ. Consulte [PREVIEW_PLAYER_CORE_DESIGN.md](docs/architecture/PREVIEW_PLAYER_CORE_DESIGN.md).
+
+## Preview Player â€” Sprint 18.2
+
+- La salida de preescucha se representa con IDs serializados y aplica fallback de ID configurado a descripciÃ³n, salida predeterminada y finalmente estado degradado. No cambia el dispositivo global de Windows.
+- Settings schema 3 guarda explÃ­citamente volumen privado (por defecto `.70`) y preferencia de salida. La historia `played` se escribe una vez por carga sÃ³lo tras `PLAYING` confirmado; una falla de historial no interrumpe reproducciÃ³n.
+- `MainWindow` recibe y cierra el servicio opcional sin controles visuales ni referencias directas a Qt Multimedia. Consulte `docs/architecture/PREVIEW_PLAYER_CORE_DESIGN.md`.
+
+## Preview Player Visual (Epic 18.3)
+
+- `PreviewPlayerBar` is a persistent functional bottom control bar: explicit load from the active library row, play/pause, stop, seek, elapsed time, private volume, output selection and safe state/error feedback.
+- It uses only `PreviewPlayerService`; it does not autoplay on selection, expose file paths or create Qt multimedia objects. Device preferences are explicit and degraded operation keeps the library usable.
+- The current UI is functional rather than the final visual redesign. Waveform, artwork, mixing and DJ controls remain pending. See `docs/architecture/PREVIEW_PLAYER_VISUAL_INTEGRATION.md`.
 
 ## Capacidades v0.18.0
 
