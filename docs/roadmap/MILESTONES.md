@@ -1,5 +1,9 @@
 # Milestones
 
+## Epic 19 closed - v0.21.0 Global Ranking
+
+Global Ranking Engine introduces batched lightweight candidates and deterministic top-K recommendations across the complete library. The next stage is backend freeze and final cleanup; Traktor, Rekordbox, other DJ software databases, external metadata APIs and Gemini/ChatGPT/OpenAI integrations remain backlog only.
+
 ## v0.20.0 local published - Epic 18 closed
 
 Preview Player closes with a service-only Qt backend, deterministic tests, explicit device/Settings/history integration and a functional bottom bar. The next planned stage is Epic 19 - Global Ranking & DJ Integration; no implementation is included here.
@@ -100,3 +104,8 @@ DJPlus v0.8.0 está preparado para cierre: la Épica 1 AI Runtime Core completó
 | 5.6 | Favorites + History Engine — completado |
 | 5.7 | Smart Collections Engine — completado |
 | 5.8 | Stabilization & Release Candidate — validado, pendiente de aprobación de cierre |
+
+## Epic 19 — Global Ranking Engine
+
+- Sprint 19.1: global batched ranking, deterministic top-K, canonical factory, effective ToolRegistry composition, SQLite anti-N+1 coverage and 10,000-track benchmark validation.
+- Sprint 19.2 remains pending; no UI work or musical scoring change was started.

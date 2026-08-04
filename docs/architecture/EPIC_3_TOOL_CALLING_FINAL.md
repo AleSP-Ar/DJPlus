@@ -2,6 +2,8 @@
 
 Epic 3 completes the bounded tool allowlist for library operations, favorites, history, import jobs, DJ compatibility, and music analysis.
 
+The optional `RecommendationTool` continues to expose the existing page DTO but now receives the canonical global recommendation facade automatically from `ToolRegistry.default()` when library, history and DJ-intelligence services are present. Explicit facade injection remains the compatibility path; no tool has direct repository access.
+
 ## Validation boundary
 
 `ToolSchemaValidator` validates each tool schema when it is registered and validates every `ToolCallDTO` immediately before dispatch. The validator supports bounded object properties, required fields, additional-property policy, enums, primitives, arrays, and the legacy track marker. Invalid calls return a typed failed `ToolResultDTO`; the target tool is not executed.

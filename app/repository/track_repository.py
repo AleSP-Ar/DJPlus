@@ -180,6 +180,23 @@ class TrackRepository:
     def count_tracks(self):
         return self.session.query(Track).count()
 
+    def iter_ranking_rows(self, *, batch_size, filters, excluded_track_ids=(), cancellation=None):
+        """Yield only score-required scalar columns in stable id order."""
+        query = self.session.query(Track.id, Track.bpm, Track.key, Track.energy, Track.rating, Track.genre, Track.is_favorite, Track.duration, Track.filepath)
+        if excluded_track_ids: query = query.filter(~Track.id.in_(tuple(excluded_track_ids)))
+        if filters.get("bpm_min") is not None: query = query.filter(Track.bpm >= filters["bpm_min"])
+        if filters.get("bpm_max") is not None: query = query.filter(Track.bpm <= filters["bpm_max"])
+        if filters.get("key"): query = query.filter(Track.key.ilike(f"%{filters['key']}%"))
+        if filters.get("genre"): query = query.filter(Track.genre.ilike(f"%{filters['genre']}%"))
+        if filters.get("favorite") is not None: query = query.filter(Track.is_favorite == filters["favorite"])
+        query = query.order_by(Track.id.asc()).yield_per(batch_size)
+        batch = []
+        for row in query:
+            if cancellation is not None and callable(getattr(cancellation, "is_cancelled", None)) and cancellation.is_cancelled(): break
+            batch.append(row)
+            if len(batch) == batch_size: yield tuple(batch); batch = []
+        if batch: yield tuple(batch)
+
     def close(self):
         self.session.close()
 

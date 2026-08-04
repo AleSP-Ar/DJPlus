@@ -1,5 +1,9 @@
 # Arquitectura DJPlus
 
+### v0.21.0 - Global Ranking (Épica 19 cerrada)
+
+`GlobalRankingService` streams explicit scalar columns from `TrackRepository` through `LibraryService`, retains only a top-K heap and orders ties by score, confidence and track ID. `ToolRegistry.default()` composes the global recommendation facade without UI dependencies; Set Builder may consume the same source and has a typed cooperative cancellation result. The next stage is backend freeze and final cleanup.
+
 ### v0.20.0 - Preview Player (Épica 18 cerrada)
 
 La preescucha local se organiza como `PreviewPlayerService` sobre `AudioPlaybackBackendProtocol`. El adaptador Qt encapsula multimedia, el backend determinista sirve a pruebas sin audio y `PreviewPlayerBar` consume únicamente el servicio. La composición inyecta Settings e historial, mientras MainWindow conserva el ciclo de vida. La próxima etapa es Épica 19 — Global Ranking & DJ Integration.
@@ -9,6 +13,8 @@ La preescucha local se organiza como `PreviewPlayerService` sobre `AudioPlayback
 `PreviewPlayerService` es una frontera de servicios sin widgets: depende sólo de `AudioPlaybackBackendProtocol`, expone snapshots inmutables y recibe callbacks de eventos. `QtMultimediaPlaybackBackend` encapsula los objetos Qt y `DeterministicPlaybackBackend` permite pruebas sin salida audible. La UI no compone ni controla aún este servicio; futuros consumidores deberán respetar el hilo Qt y cerrar el servicio antes de liberar la aplicación.
 
 Version 0.19.0 closes Epic 17: `SettingsService` owns versioned preferences, `AppLoggingService` owns local structured diagnostics, and `BackupRestoreService` owns verified local recovery packages. Their composition remains outside the UI and uses injected paths, loggers and database lifecycle callbacks.
+
+Epic 19.1 adds an optional read-only global-ranking path beneath the existing recommendation boundary. `TrackRepository` streams scalar ranking fields to `LibraryService`; `GlobalRankingService` applies the unchanged score engine with bounded top-K state; `RecommendationFacade` preserves its public page DTO and `ToolRegistry.default()` composes the global factory when dependencies are available. The Set Builder may use the same source and returns a typed cancellation outcome rather than a partial final set.
 
 Sprint 18.2 extends preview composition with `AudioOutputDeviceDTO` instead of Qt device objects, Settings schema 3 preferences and `PlaybackHistoryPortProtocol`. Device fallback is configured ID, description, default output and controlled degraded state. MainWindow only owns optional lifecycle; it has no `QMediaPlayer`, `QAudioOutput` or playback UI.
 

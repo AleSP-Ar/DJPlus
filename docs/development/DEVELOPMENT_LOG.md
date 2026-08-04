@@ -1,5 +1,11 @@
 # Development Log
 
+## 2026-08-03 - v0.21.0 Global Ranking (Epic 19 closed)
+
+- Added a batched global candidate source and bounded deterministic top-K ranking without UI or ORM materialization.
+- `ToolRegistry.default()` composes the canonical global `RecommendationFacade` automatically with Library, History and DJ Intelligence while preserving manual injection.
+- Set Builder shares the bounded global source and returns `CANCELLED` without a final plan on cooperative cancellation. SQLite query-count, 10,000-candidate benchmark and structured-event coverage were validated before local publication.
+
 ## 2026-08-03 - v0.20.0 Preview Player
 
 - Épica 18 queda cerrada con Preview Player Core, selección de dispositivo, Settings schema 3, historial `played` confirmado y la barra funcional integrada en MainWindow.
@@ -209,6 +215,12 @@
 - El arranque de base usa exclusivamente migraciones versionadas.
 - Se normalizan filepaths para compatibilidad entre rutas relativas heredadas y rutas absolutas de importación.
 - Los errores persistidos se acotan a 500 caracteres y se agregó un benchmark reproducible del motor.
+
+## 2026-08-03 — Epic 19 Sprint 19.1: Global Ranking Engine
+
+- Added canonical global recommendation composition and automatic `ToolRegistry.default()` activation while preserving manual injection.
+- The ranking streams scalar columns by batches and retains only top-K; a real SQLite test guards against N+1 and the temporary 10,000-track benchmark reports time, memory, queries and determinism.
+- Set Builder returns a typed global cancellation outcome rather than a final partial plan; structured events contain only counters and status.
 
 ## 2026-08-02 — Épica 1: AI Runtime Core (v0.8.0)
 

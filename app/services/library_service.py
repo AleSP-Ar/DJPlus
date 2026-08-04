@@ -87,5 +87,11 @@ class LibraryService:
             )
         return self._result_count
 
+    def iter_ranking_candidates(self, *, batch_size, filters, excluded_track_ids, cancellation=None):
+        """Global read-only source; does not alter current UI pagination state."""
+        from .global_ranking_service import RankingTrackDTO
+        for rows in self.repository.iter_ranking_rows(batch_size=batch_size, filters=filters, excluded_track_ids=excluded_track_ids, cancellation=cancellation):
+            yield tuple(RankingTrackDTO(row.id, row.bpm, row.key, row.energy, row.rating or 0, row.genre, bool(row.is_favorite), row.duration, row.filepath) for row in rows)
+
     def close(self):
         self.repository.close()

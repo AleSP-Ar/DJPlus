@@ -171,20 +171,29 @@ class ToolRegistry:
             (history_service, HistoryTool),
             (import_manager_facade, ImportTool),
         )
-        if any(service is not None for service, _ in optional_tools) and not all(
+        # History is also the minimum dependency for the automatic global
+        # recommendation facade.  It may be supplied without the two unrelated
+        # optional tools; retain the all-or-nothing contract when either of
+        # those tools is requested.
+        if (favorite_service is not None or import_manager_facade is not None) and not all(
             service is not None for service, _ in optional_tools
         ):
             raise ToolRegistryError("El registro estandar requiere los tres servicios opcionales juntos.")
-        tools.extend(tool_type(service) for service, tool_type in optional_tools if service is not None)
+        if all(service is not None for service, _ in optional_tools):
+            tools.extend(tool_type(service) for service, tool_type in optional_tools)
         analysis_tools = (
             (dj_intelligence_service, DJCompatibilityTool),
             (music_analysis_service, MusicAnalysisTool),
         )
-        if any(service is not None for service, _ in analysis_tools) and not all(
-            service is not None for service, _ in analysis_tools
-        ):
+        if music_analysis_service is not None and dj_intelligence_service is None:
             raise ToolRegistryError("El registro estandar requiere ambos servicios de analisis juntos.")
-        tools.extend(tool_type(service) for service, tool_type in analysis_tools if service is not None)
+        if all(service is not None for service, _ in analysis_tools):
+            tools.extend(tool_type(service) for service, tool_type in analysis_tools)
+        if recommendation_facade is None and history_service is not None and dj_intelligence_service is not None:
+            from .global_ranking_factory import create_global_recommendation_facade
+            recommendation_facade = create_global_recommendation_facade(
+                library_service, history_service, dj_intelligence_service
+            )
         if recommendation_facade is not None:
             tools.append(RecommendationTool(recommendation_facade))
         if diagnostics_service is not None:

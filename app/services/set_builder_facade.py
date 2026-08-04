@@ -1,6 +1,7 @@
 """Read-only orchestration from LibraryService candidates to an energy-aware set."""
 
 from dataclasses import dataclass
+import logging
 from types import MappingProxyType
 
 from .energy_journey import EnergyJourneyPlanner, EnergyJourneyDTO, SetJourneyPolicyDTO
@@ -22,6 +23,7 @@ class SetBuilderQueryDTO:
     genre: str | None = None
     favorite: bool | None = None
     recent_history_limit: int = 20
+    cancellation: object | None = None
 
     def __post_init__(self):
         if not isinstance(getattr(self.initial_track, "id", None), int) or self.initial_track.id < 1:
@@ -83,10 +85,31 @@ class SetBuilderResultDTO:
         return "\n".join(lines)
 
 
+@dataclass(frozen=True)
+class SetBuilderCancelledResultDTO:
+    """Typed no-result outcome: a cancelled global scan never publishes a final set."""
+
+    candidate_total: int
+    excluded_recent_track_ids: tuple[int, ...]
+    explanation: str
+    status: str = "CANCELLED"
+    completed: bool = False
+    partial: bool = False
+
+    def __post_init__(self):
+        if not isinstance(self.candidate_total, int) or self.candidate_total < 0:
+            raise SetBuilderError("El total de candidatas no es valido.")
+        if self.status != "CANCELLED" or self.completed or self.partial:
+            raise SetBuilderError("Una cancelacion no puede publicar un plan parcial o completo.")
+
+    def export_text(self):
+        return self.explanation
+
+
 class SetBuilderFacade:
     """Use application services only; never stores or executes a resulting set."""
 
-    def __init__(self, library_service, history_service, energy_journey_planner):
+    def __init__(self, library_service, history_service, energy_journey_planner, global_ranking_service=None, logger=None):
         if not callable(getattr(library_service, "query", None)) or not callable(getattr(library_service, "count_results", None)):
             raise TypeError("SetBuilderFacade requiere LibraryService.")
         if not callable(getattr(history_service, "list_history", None)):
@@ -96,12 +119,24 @@ class SetBuilderFacade:
         self._library_service = library_service
         self._history_service = history_service
         self._energy_journey_planner = energy_journey_planner
+        self._global_ranking_service = global_ranking_service
+        self._logger = logger or logging.getLogger("djplus.set_builder")
 
     def build(self, query):
         if not isinstance(query, SetBuilderQueryDTO):
             raise TypeError("SetBuilderFacade.build requiere SetBuilderQueryDTO.")
-        rows, _has_more = self._library_service.query(text="", **dict(query.filters()))
-        total = self._library_service.count_results()
+        if self._global_ranking_service is not None:
+            from .global_ranking_service import GlobalRankingRequestDTO
+            excluded = self._recent_track_ids(query.recent_history_limit)
+            self._event("set_builder_global_started", target=query.target_track_count)
+            ranked = self._global_ranking_service.rank(GlobalRankingRequestDTO(query.initial_track, min(100, query.target_track_count * 12), excluded_track_ids=tuple(sorted(excluded)), cancellation=query.cancellation, **dict(query.filters())))
+            if ranked.cancelled:
+                self._event("set_builder_global_cancelled", processed=ranked.stats.processed, batches=ranked.stats.batches)
+                return SetBuilderCancelledResultDTO(ranked.stats.processed + ranked.stats.discarded, tuple(sorted(excluded)), "Construccion cancelada antes de publicar un set final.")
+            rows, total = ranked.candidates, ranked.stats.processed + ranked.stats.discarded
+        else:
+            rows, _has_more = self._library_service.query(text="", **dict(query.filters()))
+            total = self._library_service.count_results()
         if not isinstance(rows, (tuple, list)) or not isinstance(total, int) or total < 0:
             raise SetBuilderError("LibraryService devolvio candidatas invalidas.")
         excluded = self._recent_track_ids(query.recent_history_limit)
@@ -111,7 +146,10 @@ class SetBuilderFacade:
             SetJourneyPolicyDTO(query.energy_curve),
         )
         explanation = f"Candidatas: {total}; excluidas por historial: {len(excluded)}; {journey.explanation}"
-        return SetBuilderResultDTO(journey, total, tuple(sorted(excluded)), explanation)
+        result = SetBuilderResultDTO(journey, total, tuple(sorted(excluded)), explanation)
+        if self._global_ranking_service is not None:
+            self._event("set_builder_global_completed", candidates=total, tracks=len(result.sequence))
+        return result
 
     def _recent_track_ids(self, limit):
         if limit == 0:
@@ -120,3 +158,6 @@ class SetBuilderFacade:
         if not isinstance(events, (tuple, list)):
             raise SetBuilderError("HistoryService devolvio historial invalido.")
         return {track_id for event in events for track_id in ((event.get("track_id") if isinstance(event, dict) else getattr(event, "track_id", None)),) if isinstance(track_id, int) and track_id > 0}
+
+    def _event(self, name, **context):
+        self._logger.info(name, extra={"event_name": name, "component": "set_builder", "context": context})

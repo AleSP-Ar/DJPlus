@@ -1,5 +1,9 @@
 # DJPlus Architecture — v0.5.0 Release Candidate (pending approval)
 
+## v0.21.0 Epic 19 closure
+
+`GlobalRankingService` is the canonical read-only global-ranking service. It streams scalar candidate batches through `LibraryService`, uses a bounded top-K heap, filters in SQL and resolves ties by score descending, confidence descending and track ID ascending. `ToolRegistry.default()` automatically composes `create_global_recommendation_facade(...)` when Library, History and DJ Intelligence are present. Cancellation is cooperative and Set Builder publishes no final set when it returns `CANCELLED`. Backend freeze and final cleanup are next; external DJ databases, metadata APIs and generative-AI integrations remain backlog.
+
 ## v0.20.0 Epic 18 closure
 
 Epic 18 provides local preview playback through `PreviewPlayerService` and `AudioPlaybackBackendProtocol`. Qt Multimedia is hidden in its adapter, Settings and History are injected at composition, and `PreviewPlayerBar` is a UI-only service consumer. Explicit library loading prevents autoplay; output fallback and degraded mode keep the rest of the application available. The next roadmap item is Epic 19 - Global Ranking & DJ Integration.
@@ -87,7 +91,7 @@ Migration `0004_analysis_provenance` adds nullable provenance to tracks: `analyz
 
 ## Intelligent Set Builder (v0.13.0)
 
-`SetBuilderFacade` obtiene una sola página de candidatas mediante `LibraryService` y excluye historial reciente mediante `HistoryService`. `SetPlanningEngine` selecciona transiciones deterministas con límites de BPM y energía a través de `RecommendationService`; `EnergyJourneyPlanner` agrega objetivos ascending, descending o arc en las fases warm-up, build, peak y cooldown. El ranking se limita al conjunto de candidatas recuperado, no a toda la biblioteca.
+`SetBuilderFacade` obtiene candidatas mediante `LibraryService` y excluye historial reciente mediante `HistoryService`. Cuando se inyecta el camino global, usa `GlobalRankingService` con heap top-K y streaming de columnas escalares; si se cancela devuelve un DTO `CANCELLED` sin plan final. `SetPlanningEngine` selecciona transiciones deterministas con límites de BPM y energía a través de `RecommendationService`; `EnergyJourneyPlanner` agrega objetivos ascending, descending o arc en las fases warm-up, build, peak y cooldown. Beam search no se implementa todavía porque no hay una medición de corrección que lo justifique.
 
 `SetBuilderTool` es opcional y read-only en `ToolRegistry`; `AssistantPanel` puede renderizar la secuencia. Los resultados se exportan a texto y devuelven un prefijo parcial explicado si no hay candidatas válidas. No hay persistencia de planes, Repository, SQLite directo ni creación automática de playlists.
 

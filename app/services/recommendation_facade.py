@@ -81,7 +81,7 @@ class RecommendationPageDTO:
 class RecommendationFacade:
     """Compose LibraryService, HistoryService and RecommendationService without writes."""
 
-    def __init__(self, library_service, history_service, recommendation_service):
+    def __init__(self, library_service, history_service, recommendation_service, global_ranking_service=None):
         if not callable(getattr(library_service, "query", None)) or not callable(getattr(library_service, "load_more", None)):
             raise TypeError("RecommendationFacade requiere LibraryService.")
         if not callable(getattr(library_service, "count_results", None)):
@@ -93,6 +93,7 @@ class RecommendationFacade:
         self._library_service = library_service
         self._history_service = history_service
         self._recommendation_service = recommendation_service
+        self._global_ranking_service = global_ranking_service
         self._last_query = None
         self._page_number = 0
         self._last_metrics = OperationMetricsDTO("recommendation_facade", ())
@@ -114,6 +115,8 @@ class RecommendationFacade:
     def _recommend(self, query):
         if not isinstance(query, RecommendationFacadeQueryDTO):
             raise TypeError("RecommendationFacade.recommend requiere RecommendationFacadeQueryDTO.")
+        if self._global_ranking_service is not None and not query.load_more:
+            return self._recommend_global(query)
         library_started = time.perf_counter()
         if query.load_more:
             if self._last_query is None:
@@ -142,6 +145,19 @@ class RecommendationFacade:
         self._last_stage_ms["ranking"] = (time.perf_counter() - ranking_started) * 1000
         explanation = self._explanation(active_query, total, len(recent_ids), len(ranked))
         return RecommendationPageDTO(ranked, total, tuple(sorted(recent_ids)), has_more, self._page_number, explanation)
+
+    def _recommend_global(self, query):
+        from .global_ranking_service import GlobalRankingRequestDTO
+        history_started = time.perf_counter()
+        recent_ids = self._recent_track_ids(query.recent_history_limit)
+        self._last_stage_ms["history"] = (time.perf_counter() - history_started) * 1000
+        ranking_started = time.perf_counter()
+        result = self._global_ranking_service.rank(GlobalRankingRequestDTO(query.current_track, query.limit, excluded_track_ids=tuple(sorted(recent_ids)), **query.filters()))
+        self._last_stage_ms["ranking"] = (time.perf_counter() - ranking_started) * 1000
+        self._last_stage_ms["library"] = result.stats.duration_ms
+        self._page_number = 1; self._last_query = query
+        explanation = f"Alcance global; candidatas evaluadas: {result.stats.processed}; lotes: {result.stats.batches}; filtros: {', '.join(sorted(query.filters())) or 'sin filtros'}; recomendaciones: {len(result.recommendations)}."
+        return RecommendationPageDTO(result.recommendations, result.stats.processed + result.stats.discarded, tuple(sorted(recent_ids)), False, 1, explanation)
 
     def _recent_track_ids(self, limit):
         if limit == 0:

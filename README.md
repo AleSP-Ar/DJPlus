@@ -1,10 +1,15 @@
 # DJPlus
 
-DJPlus v0.20.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
+DJPlus v0.21.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
 
-Estado: v0.20.0 preparada para publicación local. El binario FFmpeg se conserva localmente y se incorpora durante el empaquetado del instalador, no en Git.
+Estado: v0.21.0 preparada para publicación local. El binario FFmpeg se conserva localmente y se incorpora durante el empaquetado del instalador, no en Git.
 
-## Capacidades v0.20.0
+## Capacidades v0.21.0
+
+## Global Ranking Engine (Épica 19.1)
+
+- `GlobalRankingService` evaluates batched lightweight candidates from the full library with bounded top-K memory, deterministic tie-breaks and cooperative cancellation.
+- Recommendation scoring remains unchanged; the global path is the default composition in `ToolRegistry.default()` with Library, History and DJ Intelligence. Manual facade injection remains compatible; Set Builder can consume the same bounded source and reports typed cooperative cancellation.
 
 - Épica 18 cierra el Preview Player local: backend Qt aislado, backend determinista sin audio, dispositivos serializados, Settings schema 3 y registro `played` una vez por carga confirmada.
 - `PreviewPlayerBar` ofrece carga explícita desde la fila activa de biblioteca, transporte, seek, volumen privado, selección de salida, estados y errores seguros. No hay autoplay ni rutas visibles.
@@ -145,3 +150,7 @@ No se requiere ni se realiza una descarga de FFmpeg en tiempo de ejecución. Par
 `BackupRestoreService` crea ZIPs verificables con una copia consistente SQLite, configuración portable sanitizada, manifiesto y checksums. La restauración exige plan, token de confirmación y un backup preventivo verificado; no existe aún UI ni tarea programada. No se incluyen música, rutas de biblioteca, logs completos, credenciales ni FFmpeg. Consulte [BACKUP_AND_RESTORE_DESIGN.md](docs/architecture/BACKUP_AND_RESTORE_DESIGN.md).
 
 La versión de aplicación se centraliza en `app/version.py`.
+
+## Global deterministic ranking (Epic 19.1)
+
+Recommendations can scan the whole library through scalar `LibraryService` batches and a bounded top-K heap, without changing music scoring. `ToolRegistry.default()` composes the global path when library, history and DJ intelligence are supplied; manual facade injection remains compatible. Tie-breaking is score, confidence, then ID. Cooperative cancellation never publishes a final partial recommendation or set.

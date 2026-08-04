@@ -1,5 +1,9 @@
 # Epic 8 - Recommendation Engine: Final Architecture Audit
 
+## Global extension (Epic 19.1)
+
+The BPM, key, energy and history scoring algorithm is unchanged. `create_global_recommendation_facade(...)` enables batched global search and `ToolRegistry.default()` composes it automatically when the required dependencies are supplied. Ties resolve by descending score, descending confidence and ascending ID. SQLite streams one candidate cursor plus fixed cost rather than N+1; both heap and returned result are bounded by K.
+
 `RecommendationFacade` is a read-only composition of `LibraryService`, `HistoryService` and `RecommendationService`. It requests a candidate page through `LibraryService.query()` with optional BPM, key, genre and favorite filters; later pages use `LibraryService.load_more()` only.
 
 Recently played IDs returned by `HistoryService.list_history()` and the current track are excluded before scoring. The facade returns `RecommendationPageDTO` with ordered explainable recommendations, count, page state, history exclusions and a deterministic explanation.

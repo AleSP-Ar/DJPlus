@@ -34,12 +34,14 @@ from .tool_result_composer import ComposedToolResponseDTO, ToolResultComposer, T
 from .recommendation_scoring import RecommendationScoreDTO, RecommendationReasonDTO, RecommendationScoringEngine, RecommendationScoringError
 from .recommendation_service import RankedRecommendationDTO, RecommendationQueryDTO, RecommendationService, RecommendationServiceError
 from .recommendation_facade import RecommendationFacade, RecommendationFacadeQueryDTO, RecommendationPageDTO, RecommendationFacadeError
+from .global_ranking_service import GlobalRankingService, GlobalRankingRequestDTO, GlobalRankingResultDTO, GlobalRankingStatsDTO, RankingTrackDTO, TrackCandidateSourceProtocol, GlobalRankingError, InvalidRankingRequestError, CandidateSourceError
+from .global_ranking_factory import create_global_recommendation_facade
 from .optimization_metrics import StageTimingDTO, OperationMetricsDTO
 from .execution_hardening import ExecutionHardeningConfigDTO, ExecutionEventMetricsDTO, ExecutionConcurrencyLimiter, ExecutionHardeningError
 from .diagnostics_service import HealthSnapshotDTO, DiagnosticsService, DiagnosticsError
 from .set_planning import SetPlanQueryDTO, SetPlanTrackDTO, SetPlanDTO, SetPlanningPolicyDTO, SetPlanningEngine, SetPlanningError
 from .energy_journey import EnergyPhaseDTO, EnergyJourneyDTO, SetJourneyPolicyDTO, EnergyJourneyPlanner, EnergyJourneyError
-from .set_builder_facade import SetBuilderQueryDTO, SetBuilderResultDTO, SetBuilderFacade, SetBuilderError
+from .set_builder_facade import SetBuilderQueryDTO, SetBuilderResultDTO, SetBuilderCancelledResultDTO, SetBuilderFacade, SetBuilderError
 from .audio_analysis_service import AudioAnalysisQueryDTO, AudioFeaturesDTO, AudioAnalysisResultDTO, AudioAnalyzerProtocol, AudioFeatureExtractorProtocol, PCMFeatureExtractor, PCMKeyAnalyzer, EnergyAnalysisDTO, TempoAnalysisDTO, ChromaAnalysisDTO, KeyAnalysisDTO, MusicAnalysisService as AudioFileMusicAnalysisService, AudioAnalysisError
 from .audio_decoder import OFFICIAL_AUDIO_FORMAT_ORDER, AudioFormatDTO, DecodedAudioInfoDTO, AudioPCMBlockDTO, AudioDecoderProtocol, AudioDecoderRegistry, WAVPCMDecoder, AIFFPCMDecoder, AudioDecoderError, UnsupportedAudioFormatError, CorruptAudioFileError
 from .ffmpeg_audio_decoder import FFmpegResolutionDTO, FFmpegCapabilityDTO, FFmpegAvailabilityDTO, FFmpegDecoderConfigDTO, FFmpegResolver, FFmpegCapabilityProbe, FFmpegAudioDecoder, FFmpegProcessError, FFmpegRuntimeIntegrityError
@@ -68,12 +70,14 @@ __all__.extend(["ComposedToolResponseDTO", "ToolResultComposer", "ToolResultComp
 __all__.extend(["RecommendationScoreDTO", "RecommendationReasonDTO", "RecommendationScoringEngine", "RecommendationScoringError"])
 __all__.extend(["RankedRecommendationDTO", "RecommendationQueryDTO", "RecommendationService", "RecommendationServiceError"])
 __all__.extend(["RecommendationFacade", "RecommendationFacadeQueryDTO", "RecommendationPageDTO", "RecommendationFacadeError"])
+__all__.extend(["GlobalRankingService", "GlobalRankingRequestDTO", "GlobalRankingResultDTO", "GlobalRankingStatsDTO", "RankingTrackDTO", "TrackCandidateSourceProtocol", "GlobalRankingError", "InvalidRankingRequestError", "CandidateSourceError"])
+__all__.append("create_global_recommendation_facade")
 __all__.extend(["StageTimingDTO", "OperationMetricsDTO"])
 __all__.extend(["ExecutionHardeningConfigDTO", "ExecutionEventMetricsDTO", "ExecutionConcurrencyLimiter", "ExecutionHardeningError"])
 __all__.extend(["HealthSnapshotDTO", "DiagnosticsService", "DiagnosticsError"])
 __all__.extend(["SetPlanQueryDTO", "SetPlanTrackDTO", "SetPlanDTO", "SetPlanningPolicyDTO", "SetPlanningEngine", "SetPlanningError"])
 __all__.extend(["EnergyPhaseDTO", "EnergyJourneyDTO", "SetJourneyPolicyDTO", "EnergyJourneyPlanner", "EnergyJourneyError"])
-__all__.extend(["SetBuilderQueryDTO", "SetBuilderResultDTO", "SetBuilderFacade", "SetBuilderError"])
+__all__.extend(["SetBuilderQueryDTO", "SetBuilderResultDTO", "SetBuilderCancelledResultDTO", "SetBuilderFacade", "SetBuilderError"])
 __all__.extend(["AudioAnalysisQueryDTO", "AudioFeaturesDTO", "AudioAnalysisResultDTO", "AudioAnalyzerProtocol", "AudioFileMusicAnalysisService", "AudioAnalysisError"])
 __all__.extend(["AudioFeatureExtractorProtocol", "PCMFeatureExtractor", "EnergyAnalysisDTO", "TempoAnalysisDTO"])
 __all__.extend(["PCMKeyAnalyzer", "ChromaAnalysisDTO", "KeyAnalysisDTO"])

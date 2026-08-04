@@ -8,6 +8,7 @@ from app.services.library_tools import SetBuilderTool
 from app.services.recommendation_scoring import RecommendationScoringEngine
 from app.services.recommendation_service import RecommendationService
 from app.services.set_builder_facade import SetBuilderFacade, SetBuilderQueryDTO
+from app.services.global_ranking_service import GlobalRankingService, RankingTrackDTO
 from app.services.set_planning import SetPlanningEngine, SetPlanningPolicyDTO
 from app.services.tool_dispatcher import ToolCallDTO, ToolDispatcher, ToolRegistry
 
@@ -65,3 +66,35 @@ class SetBuilderFacadeTests(unittest.TestCase):
         plans = [self.facade.build(SetBuilderQueryDTO(self.initial, 5, "arc")) for _ in range(100)]
         self.assertEqual(len(plans), 100)
         self.assertLess(time.perf_counter() - started, 2.0)
+
+    def test_global_cancellation_returns_typed_non_final_result(self):
+        class Token:
+            def is_cancelled(self): return True
+        class Source(_Library):
+            def iter_ranking_candidates(self, **_kwargs):
+                yield tuple(RankingTrackDTO(item.id, item.bpm, item.key, item.energy) for item in self.rows)
+        source = Source(self.rows)
+        recommendation = RecommendationService(RecommendationScoringEngine(DJIntelligenceService(), self.history))
+        facade = SetBuilderFacade(
+            source, self.history,
+            EnergyJourneyPlanner(SetPlanningEngine(recommendation, SetPlanningPolicyDTO(8, 30))),
+            GlobalRankingService(source, recommendation),
+        )
+        result = facade.build(SetBuilderQueryDTO(self.initial, 5, cancellation=Token()))
+        self.assertEqual((result.status, result.completed, result.partial), ("CANCELLED", False, False))
+        self.assertFalse(hasattr(result, "journey"))
+
+    def test_global_cancellation_after_candidate_evaluation_is_not_a_partial_plan(self):
+        class Token:
+            def __init__(self): self.calls = 0
+            def is_cancelled(self):
+                self.calls += 1
+                return self.calls >= 4
+        class Source(_Library):
+            def iter_ranking_candidates(self, **_kwargs):
+                yield tuple(RankingTrackDTO(item.id, item.bpm, item.key, item.energy) for item in self.rows)
+        recommendation = RecommendationService(RecommendationScoringEngine(DJIntelligenceService(), self.history))
+        source = Source(self.rows)
+        facade = SetBuilderFacade(source, self.history, EnergyJourneyPlanner(SetPlanningEngine(recommendation, SetPlanningPolicyDTO(8, 30))), GlobalRankingService(source, recommendation))
+        result = facade.build(SetBuilderQueryDTO(self.initial, 5, cancellation=Token()))
+        self.assertEqual((result.status, result.completed, result.partial), ("CANCELLED", False, False))
