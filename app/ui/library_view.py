@@ -1,14 +1,18 @@
-from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QLineEdit,
-    QTableView,
-    QLabel,
-    QHeaderView,
-    QPushButton,
-)
-
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
+    QDoubleSpinBox,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSpinBox,
+    QStackedWidget,
+    QTableView,
+    QVBoxLayout,
+    QWidget,
+)
 
 try:
     from ..services.library_service import LibraryService
@@ -21,96 +25,299 @@ except ImportError:  # pragma: no cover - fallback for direct execution
 
 
 class LibraryView(QWidget):
+    """Library workspace that keeps the existing service and pagination contract."""
 
     preview_track_requested = Signal(object)
+    COLUMNS = ("artist", "title", "album", "bpm", "key", "duration", "rating")
 
     def __init__(self, library_service=None, history_service=None):
         super().__init__()
-
-        # Optional composition is intentionally narrow: normal startup still
-        # owns the canonical services, while isolated callers can supply them.
         self.library_service = library_service or LibraryService()
         self.history_service = history_service or HistoryService()
+        self._active_filters = {}
+        self._last_error = None
 
-        self.layout = QVBoxLayout()
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(16, 16, 16, 16)
+        self.layout.setSpacing(12)
+        self._build_ui()
+        self._connect_signals()
+        self.load_tracks()
 
-        self.counter = QLabel(
-            "Biblioteca: cargando..."
-        )
+    def _build_ui(self):
+        self._build_heading()
+        self._build_toolbar()
+        self._build_filter_panel()
+        self._build_table_area()
+        self._build_selection_actions()
+
+    def _build_heading(self):
+        heading = QHBoxLayout()
+        heading.setSpacing(8)
+        title_group = QVBoxLayout()
+        title_group.setSpacing(2)
+        title = QLabel("Biblioteca")
+        title.setObjectName("libraryTitle")
+        subtitle = QLabel("Explorá, ordená y prepará tu música")
+        subtitle.setObjectName("librarySubtitle")
+        title_group.addWidget(title)
+        title_group.addWidget(subtitle)
+        heading.addLayout(title_group)
+        heading.addStretch(1)
+        self.counter = QLabel("Biblioteca: cargando...")
+        self.counter.setObjectName("libraryCounter")
+        heading.addWidget(self.counter, alignment=Qt.AlignRight | Qt.AlignVCenter)
+        self.layout.addLayout(heading)
+
+    def _build_toolbar(self):
+        toolbar = QFrame()
+        toolbar.setObjectName("libraryToolbar")
+        layout = QHBoxLayout(toolbar)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(8)
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText(
-            "Buscar artista, título o álbum..."
-        )
+        self.search.setObjectName("librarySearch")
+        self.search.setPlaceholderText("Buscar artista, título o álbum...")
+        self.search.setClearButtonEnabled(True)
+        self.search.setAccessibleName("Buscar en la biblioteca")
+        self.filter_toggle_button = QPushButton("Filtros")
+        self.filter_toggle_button.setCheckable(True)
+        self.filter_toggle_button.setAccessibleName("Mostrar filtros de biblioteca")
+        self.refresh_button = QPushButton("Actualizar")
+        self.refresh_button.setAccessibleName("Actualizar resultados de biblioteca")
 
+        layout.addWidget(self.search, 1)
+        layout.addWidget(self.filter_toggle_button)
+        layout.addWidget(self.refresh_button)
+        self.layout.addWidget(toolbar)
+
+    def _build_filter_panel(self):
+        self.filter_panel = QFrame()
+        self.filter_panel.setObjectName("libraryFilters")
+        layout = QHBoxLayout(self.filter_panel)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(8)
+
+        self.genre_filter = QLineEdit()
+        self.genre_filter.setPlaceholderText("Género")
+        self.genre_filter.setAccessibleName("Filtrar por género")
+        self.bpm_min_filter = QDoubleSpinBox()
+        self.bpm_min_filter.setRange(0, 400)
+        self.bpm_min_filter.setDecimals(1)
+        self.bpm_min_filter.setSpecialValueText("BPM mínimo")
+        self.bpm_max_filter = QDoubleSpinBox()
+        self.bpm_max_filter.setRange(0, 400)
+        self.bpm_max_filter.setDecimals(1)
+        self.bpm_max_filter.setSpecialValueText("BPM máximo")
+        self.key_filter = QLineEdit()
+        self.key_filter.setPlaceholderText("Clave")
+        self.key_filter.setAccessibleName("Filtrar por clave")
+        self.rating_filter = QSpinBox()
+        self.rating_filter.setRange(0, 5)
+        self.rating_filter.setSpecialValueText("Rating mínimo")
+        self.apply_filters_button = QPushButton("Aplicar")
+        self.clear_filters_button = QPushButton("Limpiar")
+
+        for widget in (
+            self.genre_filter,
+            self.bpm_min_filter,
+            self.bpm_max_filter,
+            self.key_filter,
+            self.rating_filter,
+            self.apply_filters_button,
+            self.clear_filters_button,
+        ):
+            layout.addWidget(widget)
+        self.filter_panel.setVisible(False)
+        self.layout.addWidget(self.filter_panel)
+
+    def _build_table_area(self):
         self.table = QTableView()
+        self.table.setObjectName("libraryTable")
         self.model = TrackTableModel([], self.library_service.load_more)
-
         self.table.setModel(self.model)
-        self.model.rowsInserted.connect(self.update_counter)
+        self.table.setSelectionBehavior(QTableView.SelectRows)
+        self.table.setSelectionMode(QTableView.SingleSelection)
+        self.table.setEditTriggers(QTableView.NoEditTriggers)
+        self.table.setAlternatingRowColors(True)
+        self.table.setSortingEnabled(False)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setShowGrid(False)
 
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeToContents)
-        header.setStretchLastSection(True)
+        header.setSectionsClickable(True)
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        for section in (3, 4, 5, 6):
+            header.setSectionResizeMode(section, QHeaderView.ResizeToContents)
         header.sectionClicked.connect(self.sort_tracks)
 
-        self.table.setSelectionBehavior(QTableView.SelectRows)
-        self.table.setAlternatingRowColors(True)
+        self.state_page = QFrame()
+        self.state_page.setObjectName("libraryState")
+        state_layout = QVBoxLayout(self.state_page)
+        state_layout.setContentsMargins(24, 24, 24, 24)
+        state_layout.setSpacing(8)
+        self.state_title = QLabel("Cargando biblioteca")
+        self.state_title.setObjectName("libraryStateTitle")
+        self.state_message = QLabel("Preparando resultados…")
+        self.state_message.setObjectName("libraryStateMessage")
+        self.state_message.setWordWrap(True)
+        state_layout.addWidget(self.state_title)
+        state_layout.addWidget(self.state_message)
+        state_layout.addStretch(1)
 
-        selection = self.table.selectionModel()
-        selection.selectionChanged.connect(self.on_selection_changed)
+        self.content_stack = QStackedWidget()
+        self.content_stack.addWidget(self.table)
+        self.content_stack.addWidget(self.state_page)
+        self.layout.addWidget(self.content_stack, 1)
 
-        self.info_label = QLabel("Selecciona una pista")
+    def _build_selection_actions(self):
+        selection_bar = QFrame()
+        selection_bar.setObjectName("librarySelectionBar")
+        layout = QHBoxLayout(selection_bar)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(8)
+        self.info_label = QLabel("Seleccioná una pista")
+        self.info_label.setObjectName("librarySelectionInfo")
         self.load_preview_button = QPushButton("Cargar en reproductor")
         self.load_preview_button.setAccessibleName("Cargar pista seleccionada en reproductor")
         self.load_preview_button.setToolTip("Carga la fila activa en la preescucha sin reproducirla")
         self.load_preview_button.setEnabled(False)
         self.load_preview_button.setVisible(False)
+        layout.addWidget(self.info_label, 1)
+        layout.addWidget(self.load_preview_button)
+        self.layout.addWidget(selection_bar)
 
-        self.layout.addWidget(self.counter)
-        self.layout.addWidget(self.search)
-        self.layout.addWidget(self.table)
-        self.layout.addWidget(self.info_label)
-        self.layout.addWidget(self.load_preview_button)
-
-        self.setLayout(self.layout)
-
-        self.search.textChanged.connect(
-            self.filter_tracks
-        )
+    def _connect_signals(self):
+        self.search.textChanged.connect(self.filter_tracks)
+        self.filter_toggle_button.toggled.connect(self.filter_panel.setVisible)
+        self.apply_filters_button.clicked.connect(self.apply_filters)
+        self.clear_filters_button.clicked.connect(self.clear_filters)
+        self.refresh_button.clicked.connect(self.refresh_tracks)
         self.load_preview_button.clicked.connect(self.request_preview_load)
-
-        self.load_tracks()
-
-    def setup_table(self):
-
-        self.table.resizeColumnsToContents()
+        self.model.rowsInserted.connect(self._after_rows_inserted)
+        self.table.selectionModel().selectionChanged.connect(self.on_selection_changed)
 
     def load_tracks(self):
-        tracks, has_more = self.library_service.load_library()
-        self.model.set_page(tracks, has_more)
-        self.update_counter()
-        self.setup_table()
+        self._show_loading("Cargando biblioteca", "Preparando resultados…")
+        try:
+            tracks, has_more = self.library_service.load_library()
+        except Exception as error:
+            self._show_error(error)
+            return
+        self._present_result(tracks, has_more)
+
+    def refresh_tracks(self):
+        self._show_loading("Actualizando biblioteca", "Actualizando los resultados actuales…")
+        try:
+            tracks, has_more = self.library_service.refresh()
+        except Exception as error:
+            self._show_error(error)
+            return
+        self._present_result(tracks, has_more)
 
     def filter_tracks(self, text):
+        self._show_loading("Buscando", "Actualizando los resultados de búsqueda…")
+        try:
+            tracks, has_more = self.library_service.search(text)
+        except Exception as error:
+            self._show_error(error)
+            return
+        self._present_result(tracks, has_more, query_active=bool(text) or bool(self._active_filters))
 
-        tracks, has_more = self.library_service.search(text)
-        self.model.set_page(tracks, has_more)
-        self.update_counter()
+    def apply_filters(self):
+        filters = self._collect_filters()
+        self._show_loading("Aplicando filtros", "Actualizando los resultados filtrados…")
+        try:
+            tracks, has_more = self.library_service.query(self.search.text(), **filters)
+        except Exception as error:
+            self._show_error(error)
+            return
+        self._active_filters = filters
+        self._present_result(tracks, has_more, query_active=bool(self.search.text()) or bool(filters))
+
+    def clear_filters(self):
+        for widget in (self.genre_filter, self.key_filter):
+            widget.clear()
+        for widget in (self.bpm_min_filter, self.bpm_max_filter, self.rating_filter):
+            widget.setValue(0)
+        self._active_filters = {}
+        self._show_loading("Limpiando filtros", "Restableciendo los resultados de biblioteca…")
+        try:
+            tracks, has_more = self.library_service.query(self.search.text())
+        except Exception as error:
+            self._show_error(error)
+            return
+        self._present_result(tracks, has_more, query_active=bool(self.search.text()))
+
+    def _collect_filters(self):
+        values = {
+            "genre": self.genre_filter.text().strip() or None,
+            "bpm_min": self.bpm_min_filter.value() or None,
+            "bpm_max": self.bpm_max_filter.value() or None,
+            "key": self.key_filter.text().strip() or None,
+            "rating_min": self.rating_filter.value() or None,
+        }
+        return {name: value for name, value in values.items() if value is not None}
 
     def sort_tracks(self, section):
-        columns = ("artist", "title", "album", "bpm", "key", "duration", "rating")
-        column = columns[section]
-        direction = "desc" if self.table.horizontalHeader().sortIndicatorOrder() == Qt.AscendingOrder else "asc"
-        tracks, has_more = self.library_service.sort(column, direction)
+        column = self.COLUMNS[section]
+        header = self.table.horizontalHeader()
+        direction = "desc" if header.sortIndicatorOrder() == Qt.AscendingOrder else "asc"
+        self._show_loading("Ordenando biblioteca", "Aplicando el orden seleccionado…")
+        try:
+            tracks, has_more = self.library_service.sort(column, direction)
+        except Exception as error:
+            self._show_error(error)
+            return
+        self._present_result(tracks, has_more)
+        header.setSortIndicator(section, Qt.DescendingOrder if direction == "desc" else Qt.AscendingOrder)
+
+    def _present_result(self, tracks, has_more, query_active=None):
         self.model.set_page(tracks, has_more)
         self.update_counter()
-        self.table.horizontalHeader().setSortIndicator(section, Qt.DescendingOrder if direction == "desc" else Qt.AscendingOrder)
+        if tracks:
+            self.content_stack.setCurrentWidget(self.table)
+            self._last_error = None
+            return
+        active = (bool(self.search.text()) or bool(self._active_filters)) if query_active is None else query_active
+        if active:
+            self._show_state("Sin resultados", "Probá modificar la búsqueda o limpiar los filtros.")
+        else:
+            self._show_state("Biblioteca vacía", "Importá música para comenzar a organizar tu biblioteca.")
+
+    def _after_rows_inserted(self, *_):
+        self.update_counter()
+        if self.model.rowCount():
+            self.content_stack.setCurrentWidget(self.table)
 
     def update_counter(self, *_):
-        total = self.library_service.count_results()
+        try:
+            total = self.library_service.count_results()
+        except Exception:
+            total = self.model.rowCount()
         loaded = self.model.rowCount()
+        # A newly loaded page can arrive before a lightweight count provider has
+        # refreshed its snapshot.  The UI total must never be lower than the
+        # rows already present in the model.
+        total = max(total, loaded)
         self.counter.setText(f"Biblioteca: {loaded} de {total} pistas cargadas")
+
+    def _show_loading(self, title, message):
+        self._show_state(title, message)
+
+    def _show_error(self, error):
+        self._last_error = error
+        self._show_state("No se pudo cargar la biblioteca", "Reintentá actualizar los resultados.")
+        self.info_label.setText("La biblioteca no está disponible temporalmente")
+        self.load_preview_button.setEnabled(False)
+
+    def _show_state(self, title, message):
+        self.state_title.setText(title)
+        self.state_message.setText(message)
+        self.content_stack.setCurrentWidget(self.state_page)
 
     def closeEvent(self, event):
         self.library_service.close()
@@ -118,19 +325,17 @@ class LibraryView(QWidget):
         super().closeEvent(event)
 
     def on_selection_changed(self, selected, deselected):
-
         indexes = selected.indexes()
-
         if not indexes:
-            self.info_label.setText("Selecciona una pista")
+            self.info_label.setText("Seleccioná una pista")
             self.load_preview_button.setEnabled(False)
             return
-
         track = self.model.track_at(indexes[0].row())
-
         if track:
             self.history_service.record_track_selected(track.id)
-            self.load_preview_button.setEnabled(bool(getattr(track, "id", None) is not None and getattr(track, "filepath", None)))
+            self.load_preview_button.setEnabled(
+                bool(getattr(track, "id", None) is not None and getattr(track, "filepath", None))
+            )
             self.info_label.setText(
                 f"{track.artist or 'Desconocido'} - {track.title or 'Sin título'}"
             )
@@ -145,6 +350,6 @@ class LibraryView(QWidget):
         index = self.table.currentIndex()
         track = self.model.track_at(index.row()) if index.isValid() else None
         if track is None or getattr(track, "id", None) is None or not getattr(track, "filepath", None):
-            self.info_label.setText("Selecciona una pista valida para cargar")
+            self.info_label.setText("Seleccioná una pista válida para cargar")
             return
         self.preview_track_requested.emit(track)

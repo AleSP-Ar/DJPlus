@@ -49,7 +49,7 @@ class PreviewPlayerBarTests(unittest.TestCase):
         degraded = PreviewPlayerService(DeterministicPlaybackBackend(available=False, devices=()))
         degraded_bar = PreviewPlayerBar(degraded)
         try:
-            self.assertEqual(degraded_bar.state_label.text(), "Sin salida de audio")
+            self.assertEqual(degraded_bar.state_label.text(), "Modo degradado · sin salida de audio")
             self.assertFalse(degraded_bar.play_button.isEnabled())
         finally:
             degraded_bar.close(); degraded.close()
@@ -73,14 +73,25 @@ class PreviewPlayerBarTests(unittest.TestCase):
     def test_fallbacks_errors_late_events_and_destroyed_callback(self):
         self.bar.load_track(self._track(title=None, artist=None))
         self.assertIn("Artista desconocido", self.bar.track_label.text())
-        self.assertIn("Pista sin titulo", self.bar.track_label.text())
+        self.assertIn("Pista sin título", self.bar.track_label.text())
         missing = PreviewTrackDTO(str(Path(self.temp.name) / "missing.mp3"), track_id=1)
         self.bar.load_track(missing); self.assertTrue(self.bar.error_label.text())
         self.bar.load_track(self._track()); self.assertEqual(self.bar.error_label.text(), "")
         self.service._backend.emit_error("controlled")
-        self.assertEqual(self.bar.state_label.text(), "Error")
+        self.assertEqual(self.bar.state_label.text(), "Error de reproducción")
         self.bar.close(); self.service._backend._emit("position", {"position_ms": 3})
         self.assertTrue(self.bar._closed)
+
+    def test_responsive_controls_and_visual_state_accessibility(self):
+        self.bar.show(); self.bar.resize(1100, 140); self.app.processEvents()
+        self.assertFalse(self.bar._compact_layout)
+        self.bar.resize(640, 180); self.app.processEvents()
+        self.assertTrue(self.bar._compact_layout)
+        for control in (self.bar.play_button, self.bar.stop_button, self.bar.position_slider, self.bar.volume_slider, self.bar.device_combo):
+            self.assertFalse(control.isHidden())
+            self.assertTrue(control.accessibleName())
+        self.bar._set_visual_state(SimpleNamespace(output_available=True, state=PreviewPlayerState.LOADING))
+        self.assertEqual((self.bar.state_label.text(), self.bar.state_label.property("previewState")), ("Cargando", "loading"))
 
     def test_main_window_integrates_bar_without_changing_library_layout(self):
         init_database(); window = MainWindow(preview_player_service=self.service)

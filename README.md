@@ -4,9 +4,9 @@ Canonical entry point: `python -m app.main`. Deprecated compatibility modules (`
 
 Backend freeze hardening keeps the published schema at migrations `0001`–`0005`. Historical restore is verified on a preserved ZIP extraction and a separate migration candidate; the archive is never modified. Fresh-process imports are covered without user-file side effects. SQLite DDL rollback across every failure point is not assumed; verified pre-action backups and truthful migration history are the recovery boundaries. Details: [DATABASE_MIGRATION_AND_COMPATIBILITY.md](docs/architecture/DATABASE_MIGRATION_AND_COMPATIBILITY.md).
 
-DJPlus v0.22.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
+DJPlus v0.23.0 es una biblioteca musical local para DJs, basada en PySide6, SQLAlchemy y SQLite.
 
-Estado: Backend Freeze & Hardening cerrado. La siguiente etapa es la fase gráfica completa; integraciones externas y nuevas capacidades permanecen en backlog.
+Estado: UI Freeze cerrado. Los diez sprints de la Fase Gráfica unifican shell, Biblioteca, Preview Player, Colecciones, Playlists, Importación, Metadata, Assistant, Diagnóstico, feedback y accesibilidad. Integraciones externas y nuevas capacidades permanecen en backlog.
 
 Estado: v0.21.0 preparada para publicación local. El binario FFmpeg se conserva localmente y se incorpora durante el empaquetado del instalador, no en Git.
 

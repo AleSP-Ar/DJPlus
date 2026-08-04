@@ -2,7 +2,7 @@
 
 from PySide6.QtCore import QThread
 from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget
 
 from app.services.local_assistant_mvp import LocalAssistantMVP
 from app.services.diagnostics_service import DiagnosticsService
@@ -22,8 +22,13 @@ class AssistantPanel(QWidget):
         self._diagnostics_service = diagnostics_service
         self._thread = None
         self._worker = None
-        layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("Asistente local (Ollama / solo lectura)"))
+        self.setObjectName("assistantPanel")
+        self.setStyleSheet("QFrame#assistantSection { background:#1f2937; border:1px solid #374151; border-radius:8px; } QLabel#assistantTitle { font-size:18px; font-weight:600; } QLabel#assistantHint { color:#9ca3af; } QPushButton#assistantPrimary { background:#2563eb; color:white; font-weight:600; }")
+        layout = QVBoxLayout(self); layout.setContentsMargins(16,16,16,16); layout.setSpacing(12)
+        title = QLabel("Assistant local"); title.setObjectName("assistantTitle"); layout.addWidget(title)
+        hint = QLabel("Conversación y herramientas de sólo lectura. Las acciones se muestran separadas del resultado."); hint.setObjectName("assistantHint"); layout.addWidget(hint)
+        conversation = QFrame(); conversation.setObjectName("assistantSection"); conversation_layout = QVBoxLayout(conversation); conversation_layout.setContentsMargins(12,10,12,10)
+        conversation_layout.addWidget(QLabel("Conversación"))
         row = QHBoxLayout()
         self.query_input = QLineEdit()
         self.query_input.setPlaceholderText("Consultá la biblioteca…")
@@ -31,16 +36,18 @@ class AssistantPanel(QWidget):
         self.cancel_button = QPushButton("Cancelar")
         self.cancel_button.setEnabled(False)
         row.addWidget(self.query_input, 1)
-        row.addWidget(self.send_button)
+        self.send_button.setObjectName("assistantPrimary"); row.addWidget(self.send_button)
         row.addWidget(self.cancel_button)
-        layout.addLayout(row)
+        conversation_layout.addLayout(row)
         self.status_label = QLabel("Listo")
-        layout.addWidget(self.status_label)
+        conversation_layout.addWidget(self.status_label)
         self.diagnostics_label = QLabel("Diagnostico: no disponible")
-        layout.addWidget(self.diagnostics_label)
+        conversation_layout.addWidget(self.diagnostics_label)
+        layout.addWidget(conversation)
+        result = QFrame(); result.setObjectName("assistantSection"); result_layout = QVBoxLayout(result); result_layout.setContentsMargins(12,10,12,10); result_layout.addWidget(QLabel("Resultados y acciones disponibles"))
         self.response_view = QTextEdit()
         self.response_view.setReadOnly(True)
-        layout.addWidget(self.response_view)
+        result_layout.addWidget(self.response_view); layout.addWidget(result)
         self.send_button.clicked.connect(self._submit)
         self.cancel_button.clicked.connect(self._cancel)
         self.query_input.returnPressed.connect(self._submit)

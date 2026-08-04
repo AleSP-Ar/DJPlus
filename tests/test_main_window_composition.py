@@ -82,6 +82,24 @@ class MainWindowCompositionTests(unittest.TestCase):
         # global DB is initialized by the established headless UI tests.
         self.assertEqual(MainWindow.__init__.__defaults__, (None, None))
 
+    def test_navigation_switches_existing_workspaces_and_keeps_preview_persistent(self):
+        window, library_view, player = self._injected_window()
+        try:
+            self.assertEqual(window.current_section, "library")
+            self.assertIs(window.workspace_stack.currentWidget(), library_view)
+            self.assertEqual(window.workspace_stack.indexOf(window.preview_player_bar), -1)
+
+            for section, label in MainWindow.SECTIONS:
+                window.navigation_buttons[section].click()
+                self.assertEqual(window.current_section, section)
+                self.assertEqual(window.page_title_label.text(), label)
+                self.assertTrue(window.navigation_buttons[section].isChecked())
+                self.assertIsNotNone(window.workspace_stack.currentWidget())
+                self.assertIsNotNone(window.preview_player_bar)
+        finally:
+            window.close()
+        self.assertTrue(player._closed)
+
     def test_clean_isolated_lifecycle_uses_only_temporary_paths(self):
         """Exercise the real local boundaries without the global application DB."""
         before_threads = {thread.ident for thread in threading.enumerate()}

@@ -1,5 +1,9 @@
 # Milestones
 
+## v0.23.0 — UI Freeze cerrado
+
+La Fase Gráfica completa sus diez sprints: shell y navegación, Biblioteca, Preview Player, Colecciones/Playlists, Import Manager, Metadata, Assistant/Diagnóstico, feedback y accesibilidad. El trabajo es exclusivamente visual y conserva el backend congelado de v0.22.0.
+
 ## v0.22.0 — Backend Freeze & Hardening cerrado
 
 Las APIs backend, compatibilidad legacy, migraciones, restore y lifecycle quedan formalmente congelados. Próxima etapa: fase gráfica completa. APIs externas, metadata externa, Traktor, Rekordbox, Serato, Gemini y ChatGPT/OpenAI permanecen backlog.

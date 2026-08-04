@@ -4,6 +4,7 @@ from pathlib import Path
 
 from PySide6.QtWidgets import (
     QFileDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -32,9 +33,13 @@ class ImportManagerPanel(QWidget):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+        self.setObjectName("importManagerPanel")
+        self.setStyleSheet("QFrame#importSection { background:#1f2937; border:1px solid #374151; border-radius:8px; } QLabel#importTitle { font-size:18px; font-weight:600; } QLabel#importStep { color:#93c5fd; font-weight:600; } QLabel#importHint { color:#9ca3af; } QPushButton#importPrimary { background:#2563eb; color:white; font-weight:600; }")
 
-        layout.addWidget(QLabel("Import Manager"))
+        title = QLabel("Importar música"); title.setObjectName("importTitle"); layout.addWidget(title)
+        hint = QLabel("1. Origen · 2. Análisis · 3. Coincidencias y conflictos · 4. Resultado"); hint.setObjectName("importHint"); layout.addWidget(hint)
 
         folder_layout = QHBoxLayout()
         self.folder_input = QLineEdit()
@@ -46,7 +51,8 @@ class ImportManagerPanel(QWidget):
         layout.addLayout(folder_layout)
 
         buttons = QHBoxLayout()
-        self.start_button = QPushButton("Iniciar importación")
+        self.start_button = QPushButton("Analizar e importar")
+        self.start_button.setObjectName("importPrimary")
         self.start_button.clicked.connect(self.start_import)
         self.cancel_button = QPushButton("Cancelar")
         self.cancel_button.clicked.connect(self.cancel_import)
@@ -54,7 +60,7 @@ class ImportManagerPanel(QWidget):
         buttons.addWidget(self.cancel_button)
         layout.addLayout(buttons)
 
-        self.status_label = QLabel("Sin importación activa")
+        self.status_label = QLabel("Sin importación activa · esperando origen")
         self.progress_label = QLabel("Procesados: 0 / 0")
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 1)
@@ -66,16 +72,18 @@ class ImportManagerPanel(QWidget):
         layout.addWidget(self.progress_bar)
         layout.addWidget(self.current_file_label)
 
-        layout.addWidget(QLabel("Archivos procesados"))
+        step = QLabel("2–3 · Análisis, coincidencias y conflictos"); step.setObjectName("importStep"); layout.addWidget(step)
+        layout.addWidget(QLabel("Coincidencias y archivos procesados"))
         self.processed_files = QListWidget()
         self.processed_files.setMaximumHeight(140)
         layout.addWidget(self.processed_files)
 
-        layout.addWidget(QLabel("Errores"))
+        layout.addWidget(QLabel("Conflictos y errores"))
         self.errors = QListWidget()
         self.errors.setMaximumHeight(100)
         layout.addWidget(self.errors)
 
+        step = QLabel("4 · Confirmación de resultado y reportes"); step.setObjectName("importStep"); layout.addWidget(step)
         layout.addWidget(QLabel("Historial de importaciones"))
         self.history = QListWidget()
         self.history.itemSelectionChanged.connect(self.load_selected_job_detail)
@@ -125,7 +133,8 @@ class ImportManagerPanel(QWidget):
         self.progress_label.setText(f"Procesados: {processed} / {total}")
 
     def update_job_status(self, status):
-        self.status_label.setText(f"Estado: {status}")
+        labels = {"completed": "Completado", "cancelled": "Cancelado", "failed": "Error", "running": "Procesando", "pending": "Analizando"}
+        self.status_label.setText(f"Estado: {labels.get(status, status)}")
 
     def add_processed_file(self, filepath, event_type):
         labels = {

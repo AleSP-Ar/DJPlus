@@ -1,11 +1,16 @@
+from dataclasses import dataclass
+
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
+    QMainWindow,
+    QPushButton,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
-from dataclasses import dataclass
 
 try:
     from .library_view import LibraryView
@@ -44,7 +49,7 @@ class MainWindowDependencies:
     """Optional already-composed widgets for isolated lifecycle tests.
 
     Production leaves every field as ``None`` and retains the existing
-    composition.  This is not a service container: it only replaces widget
+    composition. This is not a service container: it only replaces widget
     construction at the MainWindow boundary.
     """
 
@@ -53,9 +58,23 @@ class MainWindowDependencies:
     playlist_panel: object | None = None
     import_panel: object | None = None
     track_metadata_panel: object | None = None
+    assistant_panel: object | None = None
+    diagnostics_panel: object | None = None
 
 
 class MainWindow(QMainWindow):
+    """Primary visual shell that keeps the existing workspace widgets intact."""
+
+    SECTIONS = (
+        ("library", "Biblioteca"),
+        ("collections", "Colecciones"),
+        ("playlists", "Playlists"),
+        ("import", "Importar"),
+        ("metadata", "Metadata"),
+        ("assistant", "Assistant"),
+        ("diagnostics", "Diagnóstico"),
+    )
+
     def __init__(self, preview_player_service=None, dependencies=None):
         super().__init__()
         if dependencies is not None and not isinstance(dependencies, MainWindowDependencies):
@@ -63,50 +82,83 @@ class MainWindow(QMainWindow):
         self.preview_player_service = preview_player_service
         self._dependencies = dependencies or MainWindowDependencies()
         self._resources_closed = False
+        self._page_indexes = {}
+        self.navigation_buttons = {}
 
         self.setWindowTitle("DJPlus")
-        self.resize(1000, 600)
-
+        self.resize(1280, 800)
+        self.setMinimumSize(900, 560)
+        self._apply_shell_style()
         self.create_ui()
 
+    def _apply_shell_style(self):
+        """Apply the Sprint UI 2 surface, spacing, and navigation baseline."""
+        self.setStyleSheet(
+            """
+            QMainWindow { background: #111827; color: #e5e7eb; }
+            QWidget#appShell { background: #111827; font-size: 13px; }
+            QFrame#navigationRail, QFrame#availabilityPage, QWidget#previewPlayerBar {
+                background: #1f2937; border: 1px solid #374151; border-radius: 8px;
+            }
+            QPushButton { min-height: 30px; padding: 4px 10px; border-radius: 4px; }
+            QPushButton:focus, QLineEdit:focus, QComboBox:focus, QSlider:focus, QListWidget:focus, QTableView:focus, QTextEdit:focus {
+                border: 2px solid #60a5fa;
+            }
+            QPushButton:disabled { color: #94a3b8; }
+            QPushButton:checked { background: #2563eb; color: white; font-weight: 600; }
+            QPushButton:hover:!disabled { background: #374151; }
+            QPushButton:checked:hover { background: #1d4ed8; }
+            QLabel#appTitle { font-size: 22px; font-weight: 600; }
+            QLabel#appSubtitle, QLabel#availabilityMessage { color: #9ca3af; }
+            QLabel#pageTitle { font-size: 16px; font-weight: 600; }
+            QLabel#availabilityTitle { font-size: 16px; font-weight: 600; }
+            QStackedWidget#workspaceStack { background: #111827; }
+            """
+        )
+
     def create_ui(self):
-        central = QWidget()
-        layout = QVBoxLayout(central)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(10)
+        central = QWidget(self)
+        central.setObjectName("appShell")
+        root = QVBoxLayout(central)
+        root.setContentsMargins(16, 16, 16, 16)
+        root.setSpacing(12)
 
-        title = QLabel("DJPlus - Music Library Manager")
-        title.setStyleSheet("font-size: 20px; font-weight: 600;")
-        layout.addWidget(title)
+        root.addLayout(self._build_header())
 
-        content = QHBoxLayout()
-        navigation = QVBoxLayout()
+        shell = QHBoxLayout()
+        shell.setSpacing(12)
+        shell.addWidget(self._build_navigation())
+
+        self.workspace_stack = QStackedWidget()
+        self.workspace_stack.setObjectName("workspaceStack")
+        shell.addWidget(self.workspace_stack, 1)
+        root.addLayout(shell, 1)
+
         library = self._dependencies.library_view or LibraryView()
-        collections = self._dependencies.collection_panel or CollectionPanel()
-        collections.setMaximumWidth(280)
-        navigation.addWidget(collections)
-        playlists = self._dependencies.playlist_panel or PlaylistPanel()
-        playlists.setMaximumWidth(280)
-        navigation.addWidget(playlists)
-        imports = self._dependencies.import_panel or ImportManagerPanel()
-        imports.setMaximumWidth(280)
-        navigation.addWidget(imports)
-        if self._dependencies.track_metadata_panel is not None:
-            self.track_metadata_panel = self._dependencies.track_metadata_panel
-            self.track_metadata_panel.setMaximumWidth(280)
-            navigation.addWidget(self.track_metadata_panel)
-        else:
-            try:
-                pipeline = ActionPipeline()
-                editor = TrackMetadataEditorService(pipeline, ConfirmationManager(pipeline))
-                self.track_metadata_panel = TrackMetadataPanel(TrackMetadataFacade(library.library_service, editor))
-                self.track_metadata_panel.setMaximumWidth(280)
-                navigation.addWidget(self.track_metadata_panel)
-            except Exception:
-                self.track_metadata_panel = None
-        content.addLayout(navigation)
-
         self.library_view = library
+        self.collection_panel = self._dependencies.collection_panel or CollectionPanel()
+        self.playlist_panel = self._dependencies.playlist_panel or PlaylistPanel()
+        self.import_panel = self._dependencies.import_panel or ImportManagerPanel()
+        self.track_metadata_panel = self._build_metadata_panel(library)
+
+        self._add_workspace("library", library)
+        self._add_workspace("collections", self.collection_panel)
+        self._add_workspace("playlists", self.playlist_panel)
+        self._add_workspace("import", self.import_panel)
+        self._add_workspace("metadata", self.track_metadata_panel)
+        self._add_workspace(
+            "assistant",
+            self._dependencies.assistant_panel or self._create_availability_page(
+                "Assistant", "El assistant local estará disponible cuando se configure su proveedor."
+            ),
+        )
+        self._add_workspace(
+            "diagnostics",
+            self._dependencies.diagnostics_panel or self._create_availability_page(
+                "Diagnóstico", "El diagnóstico del sistema se mostrará aquí cuando esté configurado."
+            ),
+        )
+
         self.preview_player_bar = None
         if self.preview_player_service is not None:
             try:
@@ -115,25 +167,104 @@ class MainWindow(QMainWindow):
                 library.preview_track_requested.connect(self.load_selected_track_in_preview)
             except Exception:
                 self.preview_player_bar = None
+        if self.preview_player_bar is not None:
+            root.addWidget(self.preview_player_bar)
+
+        self._compose_optional_facades(library)
+        self.setCentralWidget(central)
+        self.navigate_to("library")
+
+    def _build_header(self):
+        header = QHBoxLayout()
+        header.setSpacing(8)
+        identity = QVBoxLayout()
+        identity.setSpacing(2)
+        title = QLabel("DJPlus")
+        title.setObjectName("appTitle")
+        subtitle = QLabel("Biblioteca musical")
+        subtitle.setObjectName("appSubtitle")
+        identity.addWidget(title)
+        identity.addWidget(subtitle)
+        header.addLayout(identity)
+        header.addStretch(1)
+        self.page_title_label = QLabel()
+        self.page_title_label.setObjectName("pageTitle")
+        header.addWidget(self.page_title_label, alignment=Qt.AlignRight | Qt.AlignVCenter)
+        return header
+
+    def _build_navigation(self):
+        rail = QFrame()
+        rail.setObjectName("navigationRail")
+        rail.setMinimumWidth(220)
+        rail.setMaximumWidth(280)
+        layout = QVBoxLayout(rail)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(8)
+        for section, label in self.SECTIONS:
+            button = QPushButton(label)
+            button.setObjectName(f"navigation_{section}")
+            button.setCheckable(True)
+            button.setAccessibleName(f"Ir a {label}")
+            button.clicked.connect(lambda _checked=False, key=section: self.navigate_to(key))
+            layout.addWidget(button)
+            self.navigation_buttons[section] = button
+        layout.addStretch(1)
+        return rail
+
+    def _build_metadata_panel(self, library):
+        if self._dependencies.track_metadata_panel is not None:
+            return self._dependencies.track_metadata_panel
+        try:
+            pipeline = ActionPipeline()
+            editor = TrackMetadataEditorService(pipeline, ConfirmationManager(pipeline))
+            return TrackMetadataPanel(TrackMetadataFacade(library.library_service, editor))
+        except Exception:
+            return self._create_availability_page(
+                "Metadata", "La edición de metadata no está disponible en esta configuración."
+            )
+
+    def _create_availability_page(self, title, message):
+        page = QFrame()
+        page.setObjectName("availabilityPage")
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(8)
+        heading = QLabel(title)
+        heading.setObjectName("availabilityTitle")
+        body = QLabel(message)
+        body.setObjectName("availabilityMessage")
+        body.setWordWrap(True)
+        layout.addWidget(heading)
+        layout.addWidget(body)
+        layout.addStretch(1)
+        return page
+
+    def _add_workspace(self, section, widget):
+        self._page_indexes[section] = self.workspace_stack.addWidget(widget)
+
+    def _compose_optional_facades(self, library):
         try:
             self.duplicate_detection_facade = DuplicateDetectionFacade(
                 library.library_service,
                 DuplicateDetectionService(library.library_service),
             )
         except Exception:
-            # The integration is optional: an unavailable library must not prevent the UI from opening.
             self.duplicate_detection_facade = None
         try:
             self.multi_format_audio_analysis_facade = MultiFormatAudioAnalysisFacade(library.library_service)
         except Exception:
-            # FFmpeg remains optional and an unavailable decoder must not prevent startup.
             self.multi_format_audio_analysis_facade = None
-        content.addWidget(library, 1)
-        layout.addLayout(content, 1)
-        if self.preview_player_bar is not None:
-            layout.addWidget(self.preview_player_bar)
 
-        self.setCentralWidget(central)
+    def navigate_to(self, section):
+        """Show one existing workspace without recreating or reconfiguring it."""
+        if section not in self._page_indexes:
+            raise ValueError(f"Sección desconocida: {section}")
+        self.workspace_stack.setCurrentIndex(self._page_indexes[section])
+        for key, button in self.navigation_buttons.items():
+            button.setChecked(key == section)
+        label = dict(self.SECTIONS)[section]
+        self.page_title_label.setText(label)
+        self.current_section = section
 
     def load_selected_track_in_preview(self, track):
         """Adapt the selected model item without re-querying repository or media backend."""
@@ -141,8 +272,11 @@ class MainWindow(QMainWindow):
             return
         try:
             preview_track = PreviewTrackDTO(
-                filepath=track.filepath, track_id=track.id, title=track.title,
-                artist=track.artist, duration_ms=int(track.duration * 1000) if track.duration else None,
+                filepath=track.filepath,
+                track_id=track.id,
+                title=track.title,
+                artist=track.artist,
+                duration_ms=int(track.duration * 1000) if track.duration else None,
             )
         except (TypeError, ValueError):
             self.library_view.info_label.setText("La pista seleccionada no se puede cargar")
@@ -155,12 +289,22 @@ class MainWindow(QMainWindow):
             super().closeEvent(event)
             return
         self._resources_closed = True
-        # Closing the supplied LibraryView releases its injected repositories;
-        # the default view has the same close contract and remains idempotent.
-        try:
-            self.library_view.close()
-        except Exception:
-            pass
+        for widget in (
+            self.import_panel,
+            self.collection_panel,
+            self.playlist_panel,
+            self.track_metadata_panel,
+            self.library_view,
+        ):
+            try:
+                widget.close()
+            except Exception:
+                pass
+        if self.preview_player_bar is not None:
+            try:
+                self.preview_player_bar.close()
+            except Exception:
+                pass
         if self.preview_player_service is not None:
             try:
                 self.preview_player_service.close()
