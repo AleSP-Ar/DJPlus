@@ -1,6 +1,18 @@
 """Small, ordered, idempotent SQLite schema migration runner."""
 
-from sqlalchemy import inspect, text
+from sqlalchemy import event, inspect, text
+
+
+class MigrationError(RuntimeError):
+    """Base error for a schema history that cannot be migrated safely."""
+
+
+class MigrationHistoryError(MigrationError):
+    """Raised when migration records do not describe a known contiguous history."""
+
+
+class MigrationFutureVersionError(MigrationHistoryError):
+    """Raised when a database was created by a newer, unsupported version."""
 
 MIGRATIONS = (
     ("0001_baseline_schema", "Create the v0.5 baseline schema", "_baseline_schema"),
@@ -11,8 +23,53 @@ MIGRATIONS = (
 )
 
 
-def run_migrations(engine):
+def run_migrations(engine, execution_hook=None):
     """Bring a new or existing DJPlus SQLite database to the current schema."""
+    if execution_hook is not None and not callable(execution_hook):
+        raise TypeError("execution_hook debe ser invocable.")
+    state = {"version": None, "first_ddl": False}
+
+    def notify(phase, statement=None):
+        if execution_hook is not None:
+            execution_hook(phase, state["version"], statement)
+
+    def before_execute(_connection, _cursor, statement, _parameters, _context, _executemany):
+        normalized = statement.lstrip().upper()
+        if normalized.startswith(("CREATE TABLE", "ALTER TABLE", "CREATE INDEX")) and "SCHEMA_MIGRATIONS" not in normalized and not state["first_ddl"]:
+            state["first_ddl"] = True; notify("before_first_ddl", statement)
+        if normalized.startswith("CREATE TABLE"):
+            notify("before_create_table", statement)
+        elif normalized.startswith("CREATE INDEX"):
+            notify("before_create_index", statement)
+        elif normalized.startswith("ALTER TABLE"):
+            notify("during_data_transformation", statement)
+        elif normalized.startswith("INSERT INTO SCHEMA_MIGRATIONS"):
+            notify("before_schema_migrations_record", statement)
+
+    def after_execute(_connection, _cursor, statement, _parameters, _context, _executemany):
+        normalized = statement.lstrip().upper()
+        if normalized.startswith("CREATE TABLE"):
+            notify("after_create_table", statement)
+        elif normalized.startswith("CREATE INDEX"):
+            notify("after_create_index", statement)
+        elif normalized.startswith("INSERT INTO SCHEMA_MIGRATIONS"):
+            notify("after_schema_migrations_record", statement)
+
+    notify("before_migration_run")
+    event.listen(engine, "before_cursor_execute", before_execute)
+    event.listen(engine, "after_cursor_execute", after_execute)
+    try:
+        return _run_migrations(engine, state, notify)
+    finally:
+        event.remove(engine, "before_cursor_execute", before_execute)
+        event.remove(engine, "after_cursor_execute", after_execute)
+
+
+def _run_migrations(engine, state, notify):
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+    if "schema_migrations" not in existing_tables and existing_tables:
+        raise MigrationHistoryError("La base no vacia no contiene historial de migraciones.")
     _create_migration_table(engine)
     with engine.connect() as connection:
         applied = {
@@ -20,11 +77,25 @@ def run_migrations(engine):
             for row in connection.execute(text("SELECT version FROM schema_migrations"))
         }
 
+    known_versions = tuple(version for version, _description, _function in MIGRATIONS)
+    unknown = applied - set(known_versions)
+    if unknown:
+        raise MigrationFutureVersionError("La base declara una migracion no soportada.")
+    expected_prefix = set(known_versions[:len(applied)])
+    if applied != expected_prefix:
+        raise MigrationHistoryError("El historial de migraciones no es contiguo.")
+
     for version, _, function_name in MIGRATIONS:
         if version in applied:
             continue
+        state["version"] = version
+        notify("before_migration")
         with engine.begin() as connection:
             globals()[function_name](connection)
+            notify("after_ddl_before_schema_current")
+            # The final schema check belongs to the startup coordinator; this
+            # hook is deliberately before the durable version record.
+            notify("before_final_validation")
             connection.execute(
                 text("INSERT INTO schema_migrations (version) VALUES (:version)"),
                 {"version": version},

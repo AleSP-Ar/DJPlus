@@ -3,8 +3,7 @@ import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication
-
+from qt_test_helpers import ensure_qapplication
 from app.services.import_events import ImportEvent
 from app.services.import_manager_facade import ImportItemDetail, ImportJobDetail, ImportJobSummary
 from app.ui.import_manager_adapter import ImportManagerAdapter
@@ -61,7 +60,7 @@ class FakeImportManagerFacade:
 class ImportManagerUiTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.application = QApplication.instance() or QApplication([])
+        cls.application = ensure_qapplication()
 
     def setUp(self):
         self.worker = FakeImportWorker()

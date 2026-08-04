@@ -1,5 +1,26 @@
 # Development Log
 
+## 2026-08-04 - v0.22.0 Backend Freeze & Hardening
+
+- Se congelan las APIs canónicas y aliases históricos del backend tras auditoría de imports, migraciones, restore, lifecycle y recursos.
+- No se modifican schema, scoring, integraciones externas ni diseño visual. La próxima etapa autorizada es la fase gráfica completa.
+
+## 2026-08-04 - Backend Freeze Sprint 3 hardening
+
+- Added typed migration-history guards, an injected startup coordinator and real historical restore coverage for 0001, 0003 and 0005 ZIPs. Restore preserves the archive/extracted source, migrates only a second temporary candidate, validates integrity/foreign keys and keeps the active database on the covered failure path.
+- Added an isolated subprocess import smoke test and a controlled DDL/index failure regression: migration history is not recorded before migration success. SQLite DDL rollback is deliberately not claimed.
+- The remaining isolated lifecycle blocker is addressed in Sprint 3C through an optional widget-composition seam; no visual/UI redesign was introduced.
+
+## 2026-08-04 - Backend Freeze Sprint 3C closure evidence
+
+- Added the optional `MainWindowDependencies` composition seam and a headless clean-install lifecycle using temporary Settings, logging, SQLite, repositories and degraded deterministic preview. The default constructor remains unchanged.
+- Added a test-only migration execution hook matrix and representative historical restore fixtures. Git LFS diagnostics now reproduce successfully with empty `ls-files` output; no LFS attribute or tracked FFmpeg binary exists.
+
+## 2026-08-03 - Backend Freeze Sprint 2
+
+- Canonical local file analysis is now named `AudioFileMusicAnalysisService`; the published local and provider `MusicAnalysisService` aliases retain their historical meanings.
+- Removed one duplicate `app.services.__all__` entry and added import/export compatibility coverage. Legacy launchers remain deprecated shims; no module, dependency or migration was removed.
+
 ## 2026-08-03 - v0.21.0 Global Ranking (Epic 19 closed)
 
 - Added a batched global candidate source and bounded deterministic top-K ranking without UI or ORM materialization.
@@ -135,6 +156,8 @@
 - Se incorporó búsqueda natural determinista de biblioteca, filtros compuestos, resultados paginados y mensajes explicativos.
 - El cierre de release sigue pendiente de commit y tag aprobados explícitamente.
 
+
+Final v0.22.0 closure: Qt tests share one real QApplication and reject an incompatible QCoreApplication; lazy `app.services` exports eliminate the TrackRepository/LibraryService import cycle while preserving the public API. `unittest discover` completed 381 tests OK in 139.470 s, with no `0xC0000409` and no import cycles.
 ## 2026-08-01
 
 - Se creó la interfaz PySide6.

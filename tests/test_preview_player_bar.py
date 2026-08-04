@@ -3,13 +3,12 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from PySide6.QtWidgets import QApplication
-
 from app.database import init_database
 from app.services.preview_player import AudioOutputDeviceDTO, DeterministicPlaybackBackend, PreviewPlayerService, PreviewPlayerState, PreviewTrackDTO
 from app.services.settings_service import SettingsService
 from app.ui.main_window import MainWindow
 from app.ui.widgets.preview_player_bar import PreviewPlayerBar, format_preview_time
+from qt_test_helpers import ensure_qapplication
 
 
 class _History:
@@ -24,7 +23,7 @@ class _LibraryHistory:
 
 class PreviewPlayerBarTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls): cls.app = QApplication.instance() or QApplication([])
+    def setUpClass(cls): cls.app = ensure_qapplication()
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

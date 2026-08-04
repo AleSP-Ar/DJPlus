@@ -3,8 +3,7 @@ import time
 import unittest
 from types import SimpleNamespace
 
-from PySide6.QtWidgets import QApplication
-
+from qt_test_helpers import ensure_qapplication
 from app.services.assistant_facade import AssistantTool, AssistantToolResultDTO
 from app.services.execution_hardening import ExecutionHardeningConfigDTO
 from app.services.import_events import ImportEvent
@@ -64,7 +63,7 @@ class _SlowTool(AssistantTool):
 class ExecutionHardeningTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.application = QApplication.instance() or QApplication([])
+        cls.application = ensure_qapplication()
 
     def _mvp(self):
         return _SlowMVP(_LibraryDouble(), transport=MockProviderTransport(json_body={"message": {"content": "ok"}}))

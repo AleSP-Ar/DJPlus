@@ -13,8 +13,7 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication
-
+from qt_test_helpers import ensure_qapplication
 from app.database import init_database
 from app.services.audio_decoder import AudioDecoderRegistry
 from app.services.ffmpeg_audio_decoder import FFmpegAudioDecoder, FFmpegDecoderConfigDTO, FFmpegResolver
@@ -85,7 +84,7 @@ class _Cancelled:
 class MultiFormatAudioAnalysisFacadeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = ensure_qapplication()
 
     def _pcm(self, frames=800, channels=1, order="little"):
         data = bytearray()

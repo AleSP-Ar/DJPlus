@@ -1,6 +1,6 @@
 import unittest
 from types import SimpleNamespace
-from PySide6.QtWidgets import QApplication
+from qt_test_helpers import ensure_qapplication
 from app.ui.track_metadata_panel import TrackMetadataPanel
 from app.ui.main_window import MainWindow
 from app.database import init_database
@@ -17,7 +17,7 @@ class _Preview:
  def close(self): self.closed=True
 class TrackMetadataPanelTests(unittest.TestCase):
  @classmethod
- def setUpClass(c): c.app=QApplication.instance() or QApplication([])
+ def setUpClass(c): c.app=ensure_qapplication()
  def test_headless_preview_confirmation_apply_flow(self):
   p=TrackMetadataPanel(_Facade()); p.ids.setText("1"); p.title.setText("New"); p.preview(); self.assertTrue(p.apply_button.isEnabled()); p.apply(); self.assertEqual(p.output.toPlainText(),"applied"); p.close()
  def test_main_window_exposes_optional_metadata_panel(self):

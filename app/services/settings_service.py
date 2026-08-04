@@ -13,7 +13,7 @@ from threading import RLock
 
 from .audio_decoder import OFFICIAL_AUDIO_FORMAT_ORDER
 from .assistant_provider import ProviderConfigDTO
-from .audio_analysis_service import MusicAnalysisService, PCMFeatureExtractor, PCMKeyAnalyzer, WaveAudioAnalyzer
+from .audio_analysis_service import AudioFileMusicAnalysisService, PCMFeatureExtractor, PCMKeyAnalyzer, WaveAudioAnalyzer
 from .execution_hardening import ExecutionHardeningConfigDTO
 from .ffmpeg_audio_decoder import FFmpegDecoderConfigDTO, FFmpegResolver
 
@@ -366,7 +366,7 @@ class SettingsService:
         frames = self.get().analysis.block_frames
         features, key = PCMFeatureExtractor(), PCMKeyAnalyzer()
         features.block_frames = frames; key.block_frames = frames
-        return MusicAnalysisService(analyzer=WaveAudioAnalyzer(features, key, decoder_registry))
+        return AudioFileMusicAnalysisService(analyzer=WaveAudioAnalyzer(features, key, decoder_registry))
 
     def assistant_provider_config(self):
         value = self.get().assistant

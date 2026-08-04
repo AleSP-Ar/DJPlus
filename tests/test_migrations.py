@@ -1,8 +1,15 @@
 import unittest
+from unittest import mock
 
 from sqlalchemy import create_engine, inspect, text
 
-from app.database.migrations import _baseline_schema, run_migrations
+from app.database.migrations import (
+    MIGRATIONS,
+    MigrationFutureVersionError,
+    MigrationHistoryError,
+    _baseline_schema,
+    run_migrations,
+)
 
 
 class MigrationTests(unittest.TestCase):
@@ -75,3 +82,66 @@ class MigrationTests(unittest.TestCase):
         with engine.connect() as connection:
             versions = connection.execute(text("SELECT version FROM schema_migrations")).scalars().all()
         self.assertEqual(versions, ["0001_baseline_schema", "0002_import_engine", "0003_track_import_snapshots", "0004_analysis_provenance", "0005_track_metadata_history"])
+
+    def test_each_supported_historical_prefix_upgrades_idempotently(self):
+        for count in range(1, len(MIGRATIONS) + 1):
+            with self.subTest(count=count):
+                engine = create_engine("sqlite:///:memory:")
+                with engine.begin() as connection:
+                    connection.execute(text("CREATE TABLE schema_migrations (version VARCHAR(64) PRIMARY KEY NOT NULL)"))
+                    for version, _description, function_name in MIGRATIONS[:count]:
+                        globals_module = __import__("app.database.migrations", fromlist=[function_name])
+                        getattr(globals_module, function_name)(connection)
+                        connection.execute(text("INSERT INTO schema_migrations (version) VALUES (:version)"), {"version": version})
+                    connection.execute(text("INSERT INTO tracks (id, title, artist, filepath, is_favorite) VALUES (1, 'fixture', 'test', 'fixture.wav', 1)"))
+                run_migrations(engine)
+                run_migrations(engine)
+                with engine.connect() as connection:
+                    self.assertEqual(connection.execute(text("SELECT count(*) FROM tracks")).scalar_one(), 1)
+                    self.assertEqual(connection.execute(text("SELECT count(*) FROM schema_migrations")).scalar_one(), len(MIGRATIONS))
+
+    def test_future_and_inconsistent_history_are_rejected_without_repair(self):
+        future = create_engine("sqlite:///:memory:")
+        with future.begin() as connection:
+            connection.execute(text("CREATE TABLE schema_migrations (version VARCHAR(64) PRIMARY KEY NOT NULL)"))
+            connection.execute(text("INSERT INTO schema_migrations (version) VALUES ('0006_future')"))
+        with self.assertRaises(MigrationFutureVersionError):
+            run_migrations(future)
+
+        inconsistent = create_engine("sqlite:///:memory:")
+        with inconsistent.begin() as connection:
+            connection.execute(text("CREATE TABLE schema_migrations (version VARCHAR(64) PRIMARY KEY NOT NULL)"))
+            connection.execute(text("INSERT INTO schema_migrations (version) VALUES ('0002_import_engine')"))
+        with self.assertRaises(MigrationHistoryError):
+            run_migrations(inconsistent)
+
+    def test_nonempty_database_without_history_is_rejected(self):
+        engine = create_engine("sqlite:///:memory:")
+        with engine.begin() as connection:
+            connection.execute(text("CREATE TABLE external_data (id INTEGER PRIMARY KEY)"))
+        with self.assertRaises(MigrationHistoryError):
+            run_migrations(engine)
+
+    def test_failure_after_ddl_or_index_does_not_record_partial_migration(self):
+        """SQLite may retain DDL, but history is written only after migration success."""
+        import app.database.migrations as migrations
+
+        engine = create_engine("sqlite:///:memory:")
+        original = migrations._import_engine
+
+        def fail_after_ddl_and_indexes(connection):
+            original(connection)
+            raise RuntimeError("injected ddl/index failure")
+
+        with mock.patch.object(migrations, "_import_engine", side_effect=fail_after_ddl_and_indexes):
+            with self.assertRaisesRegex(RuntimeError, "injected ddl/index failure"):
+                run_migrations(engine)
+        with engine.connect() as connection:
+            versions = connection.execute(text("SELECT version FROM schema_migrations")).scalars().all()
+        self.assertEqual(versions, ["0001_baseline_schema"])
+
+        # Re-entry is safe even if SQLite retained idempotent DDL from the failed attempt.
+        run_migrations(engine)
+        with engine.connect() as connection:
+            versions = connection.execute(text("SELECT version FROM schema_migrations")).scalars().all()
+        self.assertEqual(versions, [version for version, _description, _function in MIGRATIONS])

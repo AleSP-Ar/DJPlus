@@ -24,11 +24,13 @@ class LibraryView(QWidget):
 
     preview_track_requested = Signal(object)
 
-    def __init__(self):
+    def __init__(self, library_service=None, history_service=None):
         super().__init__()
 
-        self.library_service = LibraryService()
-        self.history_service = HistoryService()
+        # Optional composition is intentionally narrow: normal startup still
+        # owns the canonical services, while isolated callers can supply them.
+        self.library_service = library_service or LibraryService()
+        self.history_service = history_service or HistoryService()
 
         self.layout = QVBoxLayout()
 

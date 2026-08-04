@@ -3,6 +3,7 @@ import unittest
 import warnings
 
 from app.services import AudioFileMusicAnalysisService, ProviderMusicAnalysisService
+from app.services.audio_analysis_service import MusicAnalysisService as LegacyAudioFileMusicAnalysisService
 from app.services.assistant_facade import DJCompatibilityTool, LegacyDJCompatibilityTool, LegacyLibraryQueryTool, LibraryQueryTool
 from app.services.music_analysis_service import MusicAnalysisService
 
@@ -11,6 +12,19 @@ class BackendBoundaryCompatibilityTests(unittest.TestCase):
     def test_analysis_public_names_preserve_provider_compatibility(self):
         self.assertIs(MusicAnalysisService, ProviderMusicAnalysisService)
         self.assertNotEqual(AudioFileMusicAnalysisService, ProviderMusicAnalysisService)
+        self.assertIs(LegacyAudioFileMusicAnalysisService, AudioFileMusicAnalysisService)
+
+    def test_canonical_exports_are_unique_and_main_is_import_safe(self):
+        import app.main
+        import app.services as services
+        self.assertEqual(len(services.__all__), len(set(services.__all__)))
+        self.assertTrue(callable(app.main.main))
+
+    def test_database_module_defers_directory_creation_to_explicit_initialization(self):
+        from pathlib import Path
+        source = Path(__file__).resolve().parents[1].joinpath("app", "database", "database.py").read_text(encoding="utf-8")
+        initialization = source[source.index("def init_database"):]
+        self.assertLess(initialization.index("DATABASE_PATH.parent.mkdir"), initialization.index("run_migrations"))
 
     def test_legacy_tool_names_remain_compatible_aliases(self):
         self.assertIs(LibraryQueryTool, LegacyLibraryQueryTool)

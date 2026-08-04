@@ -360,20 +360,24 @@ class WaveAudioAnalyzer:
 
 
 
-class MusicAnalysisService:
-    """Coordinate one injected file analyzer without storing any result."""
+class AudioFileMusicAnalysisService:
+    """Canonical local PCM/file-analysis boundary without result persistence."""
 
     def __init__(self, analyzer=None, decoder_registry=None):
         if analyzer is not None and decoder_registry is not None:
             raise TypeError("No se puede inyectar analizador y registry a la vez.")
         self._analyzer = analyzer or WaveAudioAnalyzer(decoder_registry=decoder_registry)
         if not isinstance(self._analyzer, AudioAnalyzerProtocol):
-            raise TypeError("MusicAnalysisService requiere AudioAnalyzerProtocol.")
+            raise TypeError("AudioFileMusicAnalysisService requiere AudioAnalyzerProtocol.")
 
     def analyze(self, query):
         if not isinstance(query, AudioAnalysisQueryDTO):
-            raise TypeError("MusicAnalysisService.analyze requiere AudioAnalysisQueryDTO.")
+            raise TypeError("AudioFileMusicAnalysisService.analyze requiere AudioAnalysisQueryDTO.")
         result = self._analyzer.analyze(query)
         if not isinstance(result, AudioAnalysisResultDTO) or result.query != query:
             raise AudioAnalysisError("El analizador devolvio un resultado invalido.")
         return result
+
+
+# Compatibility alias for callers published before the file/provider split.
+MusicAnalysisService = AudioFileMusicAnalysisService

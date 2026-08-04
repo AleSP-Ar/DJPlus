@@ -5,8 +5,7 @@ from types import SimpleNamespace
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication
-
+from qt_test_helpers import ensure_qapplication
 from app.database import init_database
 from app.services.duplicate_detection_facade import (
     DuplicateDetectionFacade,
@@ -56,7 +55,7 @@ class _Facade:
 class DuplicateDetectionIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = ensure_qapplication()
 
     def _result(self):
         fingerprints = (

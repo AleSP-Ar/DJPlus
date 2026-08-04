@@ -5,7 +5,7 @@ from dataclasses import dataclass, replace
 import logging
 from threading import Event, Lock, Thread
 
-from .audio_analysis_service import AudioAnalysisError, AudioAnalysisQueryDTO, MusicAnalysisService
+from .audio_analysis_service import AudioAnalysisError, AudioAnalysisQueryDTO, AudioFileMusicAnalysisService
 
 _LOGGER = logging.getLogger("djplus.analysis")
 
@@ -92,9 +92,9 @@ class MusicAnalysisFacade:
         if not callable(getattr(library_service, "query", None)):
             raise TypeError("MusicAnalysisFacade requiere LibraryService.")
         self._library_service = library_service
-        self._music_analysis_service = music_analysis_service or MusicAnalysisService()
-        if not isinstance(self._music_analysis_service, MusicAnalysisService):
-            raise TypeError("MusicAnalysisFacade requiere MusicAnalysisService.")
+        self._music_analysis_service = music_analysis_service or AudioFileMusicAnalysisService()
+        if not isinstance(self._music_analysis_service, AudioFileMusicAnalysisService):
+            raise TypeError("MusicAnalysisFacade requiere AudioFileMusicAnalysisService.")
 
     def analyze(self, query, on_progress=None):
         if not isinstance(query, MusicAnalysisBatchQueryDTO):

@@ -1,9 +1,10 @@
 import unittest
 
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtWidgets import QApplication
 
 from app.services.preview_player import PlaybackBackendUnavailableError, QtMultimediaPlaybackBackend
 from PySide6.QtMultimedia import QMediaPlayer
+from qt_test_helpers import ensure_qapplication
 
 
 class _Signal:
@@ -37,7 +38,9 @@ class _Audio:
 class QtMultimediaPlaybackBackendTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.application = QCoreApplication.instance() or QCoreApplication([])
+        cls.application = ensure_qapplication()
+        if not isinstance(cls.application, QApplication):
+            raise AssertionError("El fixture multimedia requiere QApplication.")
 
     def test_unavailable_qt_multimedia_is_typed(self):
         with self.assertRaises(PlaybackBackendUnavailableError):

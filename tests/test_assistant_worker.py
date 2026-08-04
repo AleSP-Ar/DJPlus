@@ -1,8 +1,7 @@
 import time
 import unittest
 
-from PySide6.QtWidgets import QApplication
-
+from qt_test_helpers import ensure_qapplication
 from app.services.local_assistant_mvp import LocalAssistantMVP
 from app.services.provider_transport import MockProviderTransport
 from app.ui.assistant_panel import AssistantPanel
@@ -24,7 +23,7 @@ def _mvp(transport=None):
 class AssistantWorkerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.application = QApplication.instance() or QApplication([])
+        cls.application = ensure_qapplication()
 
     def _run_worker(self, worker):
         signals = []

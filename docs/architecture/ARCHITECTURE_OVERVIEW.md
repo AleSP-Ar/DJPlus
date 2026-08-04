@@ -4,6 +4,10 @@
 
 `GlobalRankingService` streams explicit scalar columns from `TrackRepository` through `LibraryService`, retains only a top-K heap and orders ties by score, confidence and track ID. `ToolRegistry.default()` composes the global recommendation facade without UI dependencies; Set Builder may consume the same source and has a typed cooperative cancellation result. The next stage is backend freeze and final cleanup.
 
+### Backend freeze — migration and lifecycle hardening
+
+`DatabaseMigrationCoordinator` protects an existing historical database with a verified pre-action backup, disposes injected connections and returns a typed startup result. `BackupRestoreService` restores historical schemas through a preserved extraction and a second migration candidate, then validates SQLite integrity and foreign keys before individually atomic replacement. Imports are smoke-tested in fresh subprocesses without creating user files. SQLite DDL can be partially retained after a failure, so the recorded migration history and verified recovery backup—not an unproven global rollback—are the safety guarantees.
+
 ### v0.20.0 - Preview Player (Épica 18 cerrada)
 
 La preescucha local se organiza como `PreviewPlayerService` sobre `AudioPlaybackBackendProtocol`. El adaptador Qt encapsula multimedia, el backend determinista sirve a pruebas sin audio y `PreviewPlayerBar` consume únicamente el servicio. La composición inyecta Settings e historial, mientras MainWindow conserva el ciclo de vida. La próxima etapa es Épica 19 — Global Ranking & DJ Integration.

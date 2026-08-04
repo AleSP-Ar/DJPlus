@@ -1,10 +1,12 @@
 import json
+import hashlib
 import logging
 import sqlite3
 import tempfile
 import threading
 import unittest
 import zipfile
+from dataclasses import replace
 from pathlib import Path
 
 from sqlalchemy import create_engine, text
@@ -14,6 +16,7 @@ from app.services.app_logging_service import AppLoggingService
 from app.services.backup_restore_service import (
     BackupRequestDTO,
     BackupRestoreService,
+    BackupVerificationError,
     RestoreConfirmationError,
 )
 from app.services.settings_service import LoggingSettingsDTO, SettingsService
@@ -160,3 +163,109 @@ class BackupRestoreServiceTests(unittest.TestCase):
             self.assertEqual(type(caught.exception).__name__, "RestoreBusyError")
         finally:
             self.service._restore_lock.release()
+
+    def test_historical_restore_preserves_zip_and_migrates_only_candidate_copy(self):
+        from app.database.migrations import MIGRATIONS
+        for count in (1, 3, 5):
+            with self.subTest(schema=MIGRATIONS[count - 1][0]):
+                self.database.unlink(missing_ok=True)
+                engine = create_engine(f"sqlite:///{self.database.as_posix()}")
+                try:
+                    with engine.begin() as connection:
+                        connection.execute(text("CREATE TABLE schema_migrations (version VARCHAR(64) PRIMARY KEY NOT NULL)"))
+                        module = __import__("app.database.migrations", fromlist=["MIGRATIONS"])
+                        for version, _description, function_name in MIGRATIONS[:count]:
+                            getattr(module, function_name)(connection)
+                            connection.execute(text("INSERT INTO schema_migrations (version) VALUES (:version)"), {"version": version})
+                        connection.execute(text("INSERT INTO tracks (id,title,artist,filepath,is_favorite) VALUES (7,'histÃ³ric âœ“','artista','historic.wav',1)"))
+                        connection.execute(text("INSERT INTO playlists (id,name) VALUES (3,'Lista histÃ³rica')"))
+                        connection.execute(text("INSERT INTO playlist_tracks (playlist_id,track_id,position) VALUES (3,7,2)"))
+                        connection.execute(text("INSERT INTO collections (id,name,type) VALUES (4,'ColecciÃ³n','smart')"))
+                        connection.execute(text("INSERT INTO collection_tracks (collection_id,track_id) VALUES (4,7)"))
+                        connection.execute(text("INSERT INTO collection_rules (collection_id,field,operator,value) VALUES (4,'rating','gte','0')"))
+                        connection.execute(text("INSERT INTO track_history (track_id,event_type) VALUES (7,'played')"))
+                        if count >= 3:
+                            connection.execute(text("UPDATE tracks SET genre='House', bitrate=NULL WHERE id=7"))
+                        if count >= 5:
+                            connection.execute(text("INSERT INTO track_metadata_history (track_id,fields_json,previous_json,new_json,origin,status) VALUES (7,:fields,:previous,:new,'manual','applied')"), {"fields": '["title"]', "previous": '{"title":null}', "new": '{"title":"histÃ³ric âœ“"}'})
+                finally:
+                    engine.dispose()
+                backup = self.service.create_backup()
+                original = Path(backup.filepath).read_bytes()
+                self._migrate(self.database); self._insert_title("current")
+                plan = self.service.plan_restore(backup.filepath)
+                restored = self.service.restore_backup(plan, plan.confirmation_token)
+                self.assertTrue(restored.success)
+                connection = sqlite3.connect(self.database)
+                try:
+                    self.assertEqual(connection.execute("SELECT title,is_favorite FROM tracks WHERE id=7").fetchone(), ("histÃ³ric âœ“", 1))
+                    self.assertEqual(connection.execute("SELECT position FROM playlist_tracks WHERE playlist_id=3 AND track_id=7").fetchone()[0], 2)
+                    self.assertEqual(connection.execute("SELECT count(*) FROM collection_tracks WHERE collection_id=4 AND track_id=7").fetchone()[0], 1)
+                    self.assertEqual(connection.execute("SELECT count(*) FROM collection_rules WHERE collection_id=4").fetchone()[0], 1)
+                    self.assertEqual(connection.execute("SELECT count(*) FROM track_history WHERE track_id=7").fetchone()[0], 1)
+                    self.assertIsNone(connection.execute("PRAGMA foreign_key_check").fetchone())
+                    if count >= 3:
+                        self.assertEqual(connection.execute("SELECT genre,bitrate FROM tracks WHERE id=7").fetchone(), ("House", None))
+                    if count >= 5:
+                        self.assertEqual(connection.execute("SELECT count(*) FROM track_metadata_history WHERE track_id=7").fetchone()[0], 1)
+                finally:
+                    connection.close()
+                self.assertEqual(Path(backup.filepath).read_bytes(), original)
+
+    def test_restore_rejects_future_history_and_keeps_current_database(self):
+        self._insert_title("current")
+        valid_backup = self.service.create_backup()
+        with zipfile.ZipFile(valid_backup.filepath) as archive:
+            database_payload = archive.read("database.sqlite")
+            settings_payload = archive.read("settings.json")
+        future_database = self.root / "future.sqlite"
+        future_database.write_bytes(database_payload)
+        connection = sqlite3.connect(future_database)
+        try:
+            connection.execute("INSERT INTO schema_migrations (version) VALUES ('0006_future')")
+            connection.commit()
+        finally:
+            connection.close()
+        future_archive = self.root / "future.zip"
+        manifest = replace(
+            valid_backup.verification.manifest,
+            backup_id="future_fixture",
+            database_schema_version="0006_future",
+            files=(
+                ("database.sqlite", future_database.stat().st_size, self.service._sha256_path(future_database)),
+                ("settings.json", len(settings_payload), hashlib.sha256(settings_payload).hexdigest()),
+            ),
+        )
+        settings_file = self.root / "future-settings.json"
+        settings_file.write_bytes(settings_payload)
+        self.service._write_zip(future_archive, (("database.sqlite", future_database), ("settings.json", settings_file)), manifest)
+        with self.assertRaises(BackupVerificationError):
+            self.service.plan_restore(future_archive)
+        self.assertEqual(self._title(), "current")
+
+    def test_restore_migration_failures_preserve_active_database_and_archive(self):
+        from app.database.migrations import MIGRATIONS
+        self.database.unlink(missing_ok=True)
+        engine = create_engine(f"sqlite:///{self.database.as_posix()}")
+        with engine.begin() as connection:
+            connection.execute(text("CREATE TABLE schema_migrations (version VARCHAR(64) PRIMARY KEY NOT NULL)"))
+            for version, _description, function_name in MIGRATIONS[:1]:
+                getattr(__import__("app.database.migrations", fromlist=[function_name]), function_name)(connection)
+                connection.execute(text("INSERT INTO schema_migrations (version) VALUES (:version)"), {"version": version})
+            connection.execute(text("INSERT INTO tracks (id,title,artist,filepath) VALUES (7,'historic','artist','historic.wav')"))
+        engine.dispose()
+        backup = self.service.create_backup()
+        archive_bytes = Path(backup.filepath).read_bytes()
+        self._migrate(self.database)
+        self._insert_title("current")
+
+        failing = BackupRestoreService(
+            self.settings, self.database, self.logging_service.get_logger("backup-failure"),
+            close_connections=self._closed, migration_runner=lambda _candidate: None,
+        )
+        plan = failing.plan_restore(backup.filepath)
+        result = failing.restore_backup(plan, plan.confirmation_token)
+        self.assertFalse(result.success)
+        self.assertEqual(self._title(), "current")
+        self.assertEqual(Path(backup.filepath).read_bytes(), archive_bytes)
+        self.assertTrue(any(entry.reason == "pre_action" for entry in self.service.list_backups()))

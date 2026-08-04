@@ -1,5 +1,17 @@
 # Milestones
 
+## v0.22.0 — Backend Freeze & Hardening cerrado
+
+Las APIs backend, compatibilidad legacy, migraciones, restore y lifecycle quedan formalmente congelados. Próxima etapa: fase gráfica completa. APIs externas, metadata externa, Traktor, Rekordbox, Serato, Gemini y ChatGPT/OpenAI permanecen backlog.
+
+## Backend Freeze Sprint 3 — migration hardening in progress
+
+Historical 0001/0003/0005 restore, second-copy migration, startup migration coordination and isolated import smoke coverage are implemented. The remaining freeze validation is an explicitly injected clean-install UI lifecycle plus the full resource/performance audit; no schema, UI or scoring change is included.
+
+## Backend Freeze Sprint 2
+
+Safe API clarification is complete: explicit local/provider analysis names, legacy compatibility policy and import coverage. The next work remains controlled backend cleanup; no graphical phase or external integration has started.
+
 ## Epic 19 closed - v0.21.0 Global Ranking
 
 Global Ranking Engine introduces batched lightweight candidates and deterministic top-K recommendations across the complete library. The next stage is backend freeze and final cleanup; Traktor, Rekordbox, other DJ software databases, external metadata APIs and Gemini/ChatGPT/OpenAI integrations remain backlog only.

@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import platform
 import secrets
+import shutil
 import sqlite3
 import tempfile
 from threading import Lock, RLock
@@ -437,12 +438,17 @@ class BackupRestoreService:
             with zipfile.ZipFile(plan.backup_path, "r") as archive:
                 names = set(archive.namelist())
                 if plan.replace_database:
+                    extracted = temporary_dir / "extracted_database.sqlite"
+                    extracted.write_bytes(archive.read(_DATABASE_NAME))
+                    self._validate_sqlite(extracted)
                     candidate = temporary_dir / _DATABASE_NAME
-                    candidate.write_bytes(archive.read(_DATABASE_NAME))
-                    self._validate_sqlite(candidate)
+                    shutil.copy2(extracted, candidate)
                     if self._database_schema(candidate) != self._current_schema():
                         self._migration_runner(candidate)
-                        self._validate_sqlite(candidate)
+                    if self._database_schema(candidate) != self._current_schema():
+                        raise BackupVerificationError("La migracion temporal no alcanzo el schema actual.")
+                    self._validate_sqlite(candidate)
+                    self._validate_foreign_keys(candidate)
                 if plan.replace_settings:
                     config_candidate = temporary_dir / _SETTINGS_NAME
                     config_candidate.write_bytes(archive.read(_SETTINGS_NAME))
@@ -560,6 +566,15 @@ class BackupRestoreService:
             row = connection.execute("PRAGMA integrity_check").fetchone()
             if row is None or row[0] != "ok":
                 raise BackupVerificationError("La copia SQLite no supera integrity_check.")
+        finally:
+            connection.close()
+
+    @staticmethod
+    def _validate_foreign_keys(path):
+        connection = sqlite3.connect(path)
+        try:
+            if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+                raise BackupVerificationError("La copia SQLite no supera foreign_key_check.")
         finally:
             connection.close()
 

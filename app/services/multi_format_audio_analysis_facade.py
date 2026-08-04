@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 import logging
 
-from .audio_analysis_service import AudioAnalysisError, AudioAnalysisQueryDTO, MusicAnalysisService
+from .audio_analysis_service import AudioAnalysisError, AudioAnalysisQueryDTO, AudioFileMusicAnalysisService
 from .audio_decoder import AudioDecoderError, AudioDecoderRegistry, OFFICIAL_AUDIO_FORMAT_ORDER
 from .ffmpeg_audio_decoder import FFmpegAudioDecoder, FFmpegAvailabilityDTO, FFmpegDecoderConfigDTO
 from .music_analysis_facade import MusicAnalysisBatchError, MusicAnalysisBatchQueryDTO, MusicAnalysisFacade
@@ -123,7 +123,7 @@ class MultiFormatAudioAnalysisFacade(MusicAnalysisFacade):
             self._ffmpeg_decoder = candidate if isinstance(candidate, FFmpegAudioDecoder) else None
         self._decoder_registry = decoder_registry
         self._analyzer_version = analyzer_version
-        super().__init__(library_service, MusicAnalysisService(decoder_registry=decoder_registry))
+        super().__init__(library_service, AudioFileMusicAnalysisService(decoder_registry=decoder_registry))
 
     def diagnostics(self):
         return MultiFormatAudioDiagnosticsDTO(

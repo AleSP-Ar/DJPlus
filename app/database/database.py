@@ -16,8 +16,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATABASE_PATH = PROJECT_ROOT / "data" / "djplus.db"
 DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
 
-DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
-
 engine = create_engine(
     DATABASE_URL,
     echo=False,
@@ -33,6 +31,8 @@ _LOGGER = logging.getLogger("djplus.database")
 
 
 def init_database() -> None:
+    # Directory creation belongs to explicit startup, never module import.
+    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     _LOGGER.info(
         "Database migration started",
         extra={"event_name": "database_migration_started", "component": "database"},

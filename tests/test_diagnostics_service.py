@@ -1,8 +1,7 @@
 import time
 import unittest
 
-from PySide6.QtWidgets import QApplication
-
+from qt_test_helpers import ensure_qapplication
 from app.services.diagnostics_service import DiagnosticsService, HealthSnapshotDTO
 from app.services.execution_hardening import ExecutionEventMetricsDTO
 from app.services.library_tools import DiagnosticsTool, LibraryQueryTool
@@ -28,7 +27,7 @@ class _Library:
 class DiagnosticsServiceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.application = QApplication.instance() or QApplication([])
+        cls.application = ensure_qapplication()
 
     def test_snapshot_is_immutable_aggregate_and_export_never_contains_component_data(self):
         snapshot = DiagnosticsService((("worker", _Component()),)).snapshot()

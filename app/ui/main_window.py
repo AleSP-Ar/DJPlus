@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
 )
+from dataclasses import dataclass
 
 try:
     from .library_view import LibraryView
@@ -38,10 +39,30 @@ except ImportError:  # pragma: no cover - fallback for direct execution
     from app.services.preview_player import PreviewTrackDTO
 
 
+@dataclass(frozen=True)
+class MainWindowDependencies:
+    """Optional already-composed widgets for isolated lifecycle tests.
+
+    Production leaves every field as ``None`` and retains the existing
+    composition.  This is not a service container: it only replaces widget
+    construction at the MainWindow boundary.
+    """
+
+    library_view: object | None = None
+    collection_panel: object | None = None
+    playlist_panel: object | None = None
+    import_panel: object | None = None
+    track_metadata_panel: object | None = None
+
+
 class MainWindow(QMainWindow):
-    def __init__(self, preview_player_service=None):
+    def __init__(self, preview_player_service=None, dependencies=None):
         super().__init__()
+        if dependencies is not None and not isinstance(dependencies, MainWindowDependencies):
+            raise TypeError("dependencies requiere MainWindowDependencies.")
         self.preview_player_service = preview_player_service
+        self._dependencies = dependencies or MainWindowDependencies()
+        self._resources_closed = False
 
         self.setWindowTitle("DJPlus")
         self.resize(1000, 600)
@@ -60,24 +81,29 @@ class MainWindow(QMainWindow):
 
         content = QHBoxLayout()
         navigation = QVBoxLayout()
-        library = LibraryView()
-        collections = CollectionPanel()
+        library = self._dependencies.library_view or LibraryView()
+        collections = self._dependencies.collection_panel or CollectionPanel()
         collections.setMaximumWidth(280)
         navigation.addWidget(collections)
-        playlists = PlaylistPanel()
+        playlists = self._dependencies.playlist_panel or PlaylistPanel()
         playlists.setMaximumWidth(280)
         navigation.addWidget(playlists)
-        imports = ImportManagerPanel()
+        imports = self._dependencies.import_panel or ImportManagerPanel()
         imports.setMaximumWidth(280)
         navigation.addWidget(imports)
-        try:
-            pipeline = ActionPipeline()
-            editor = TrackMetadataEditorService(pipeline, ConfirmationManager(pipeline))
-            self.track_metadata_panel = TrackMetadataPanel(TrackMetadataFacade(library.library_service, editor))
+        if self._dependencies.track_metadata_panel is not None:
+            self.track_metadata_panel = self._dependencies.track_metadata_panel
             self.track_metadata_panel.setMaximumWidth(280)
             navigation.addWidget(self.track_metadata_panel)
-        except Exception:
-            self.track_metadata_panel = None
+        else:
+            try:
+                pipeline = ActionPipeline()
+                editor = TrackMetadataEditorService(pipeline, ConfirmationManager(pipeline))
+                self.track_metadata_panel = TrackMetadataPanel(TrackMetadataFacade(library.library_service, editor))
+                self.track_metadata_panel.setMaximumWidth(280)
+                navigation.addWidget(self.track_metadata_panel)
+            except Exception:
+                self.track_metadata_panel = None
         content.addLayout(navigation)
 
         self.library_view = library
@@ -125,6 +151,16 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         """Own the optional preview resource without coupling widgets to QtMultimedia."""
+        if self._resources_closed:
+            super().closeEvent(event)
+            return
+        self._resources_closed = True
+        # Closing the supplied LibraryView releases its injected repositories;
+        # the default view has the same close contract and remains idempotent.
+        try:
+            self.library_view.close()
+        except Exception:
+            pass
         if self.preview_player_service is not None:
             try:
                 self.preview_player_service.close()
