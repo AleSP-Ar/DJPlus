@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DJPlus Playlist | Prototipo</title>
+  <link rel="stylesheet" href="../shared/tokens.css">
+  <link rel="stylesheet" href="../shared/components.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -50,13 +52,13 @@
             <span class="input-icon">🔎</span>
             <input id="search" type="search" placeholder="Buscar en playlist..." aria-label="Buscar en playlist">
           </div>
-          <div class="action-pill">Ordenar por: BPM</div>
-          <button class="action-button">Guardar</button>
-          <button class="action-button secondary">Exportar</button>
+          <div class="control-pill">Ordenar por: BPM</div>
+          <button class="control-button">Guardar</button>
+          <button class="control-button secondary">Exportar</button>
         </div>
         <div class="toolbar-group right">
-          <div class="view-status">Tracks activos: 12</div>
-          <select id="playlistState" aria-label="Estado de playlist">
+          <div class="control-state">Tracks activos: 12</div>
+          <select id="playlistState" class="control-select" aria-label="Estado de playlist">
             <option value="normal">Playlist normal</option>
             <option value="empty">Playlist vacía</option>
             <option value="no-results">Sin resultados</option>

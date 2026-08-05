@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DJPlus Biblioteca | Prototipo</title>
+  <link rel="stylesheet" href="../shared/tokens.css">
+  <link rel="stylesheet" href="../shared/components.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -61,21 +63,21 @@
             <div class="input-icon">🔎</div>
             <input id="search" type="search" placeholder="Buscar tracks..." aria-label="Buscar tracks">
           </div>
-          <div class="filter-group">
-            <button class="filter-pill active" data-filter="all">Todos</button>
-            <button class="filter-pill" data-filter="energy">Energía</button>
-            <button class="filter-pill" data-filter="bpm">BPM</button>
-            <button class="filter-pill" data-filter="key">Tonalidad</button>
+          <div class="chips">
+            <button class="chip active" data-filter="all">Todos</button>
+            <button class="chip" data-filter="energy">Energía</button>
+            <button class="chip" data-filter="bpm">BPM</button>
+            <button class="chip" data-filter="key">Tonalidad</button>
           </div>
         </div>
         <div class="toolbar-group right">
-          <div class="view-switch" role="tablist" aria-label="Selector de vista">
-            <button class="view-tab active" data-view="grid" role="tab" aria-selected="true">Portadas</button>
-            <button class="view-tab" data-view="table" role="tab" aria-selected="false">Tabla</button>
+          <div class="control-tablist" role="tablist" aria-label="Selector de vista">
+            <button class="control-tab active" data-view="grid" role="tab" aria-selected="true">Portadas</button>
+            <button class="control-tab" data-view="table" role="tab" aria-selected="false">Tabla</button>
           </div>
           <div class="state-switcher">
             <label for="mode">Estado</label>
-            <select id="mode" aria-label="Seleccionar estado">
+            <select id="mode" class="control-select" aria-label="Seleccionar estado">
               <option value="normal">Normal</option>
               <option value="empty">Vacío</option>
               <option value="no-results">Sin resultados</option>
