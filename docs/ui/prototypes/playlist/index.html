@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DJPlus Playlist | Prototipo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegación principal">
+      <div class="sidebar-brand">DJPlus</div>
+      <nav class="sidebar-nav">
+        <button type="button" class="nav-item" aria-label="Biblioteca" title="Biblioteca">🎵</button>
+        <button type="button" class="nav-item active" aria-label="Playlist" title="Playlist">🎚️</button>
+        <button type="button" class="nav-item" aria-label="DJ Set" title="DJ Set">🧭</button>
+        <button type="button" class="nav-item" aria-label="Colecciones" title="Colecciones">📂</button>
+      </nav>
+      <div class="sidebar-footer">
+        <button type="button" class="nav-item" aria-label="Configuración" title="Configuración">⚙️</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Playlist</p>
+          <h1>Playlist - Afterhours Set</h1>
+          <p class="subtitle">Una vista ordenada de pista a pista con la curva de energía de toda la secuencia.</p>
+        </div>
+        <div class="header-metrics">
+          <div class="metric-card">
+            <span class="metric-value">12</span>
+            <span class="metric-label">Pistas</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">1:24:18</span>
+            <span class="metric-label">Duración total</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">4</span>
+            <span class="metric-label">Saltos de energía</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="toolbar playlist-toolbar">
+        <div class="toolbar-group">
+          <div class="input-group">
+            <span class="input-icon">🔎</span>
+            <input id="search" type="search" placeholder="Buscar en playlist..." aria-label="Buscar en playlist">
+          </div>
+          <div class="action-pill">Ordenar por: BPM</div>
+          <button class="action-button">Guardar</button>
+          <button class="action-button secondary">Exportar</button>
+        </div>
+        <div class="toolbar-group right">
+          <div class="view-status">Tracks activos: 12</div>
+          <select id="playlistState" aria-label="Estado de playlist">
+            <option value="normal">Playlist normal</option>
+            <option value="empty">Playlist vacía</option>
+            <option value="no-results">Sin resultados</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="energy-chart" aria-label="Curva de energía de la playlist">
+        <div class="chart-labels">
+          <span>Energy</span>
+          <span>Duration</span>
+        </div>
+        <div class="chart-track" id="energyChart">
+          <button class="segment low selected" data-title="Warm Pulse" data-bpm="118" data-key="Gm" data-energy="4" data-duration="04:10" aria-label="Warm Pulse - 118 BPM - Gm - energía 4 - 4:10"></button>
+          <button class="segment medium" data-title="Deep Motion" data-bpm="122" data-key="Am" data-energy="6" data-duration="05:16"></button>
+          <button class="segment high" data-title="Solar Echoes" data-bpm="132" data-key="C" data-energy="8" data-duration="06:12"></button>
+          <button class="segment peak" data-title="Synthetic Rush" data-bpm="138" data-key="Fm" data-energy="10" data-duration="03:40"></button>
+          <button class="segment high" data-title="Neon Drift" data-bpm="130" data-key="Em" data-energy="7" data-duration="05:58"></button>
+          <button class="segment medium" data-title="Night Bloom" data-bpm="118" data-key="Gm" data-energy="5" data-duration="04:38"></button>
+          <button class="segment low" data-title="Midnight Drive" data-bpm="128" data-key="Fm" data-energy="4" data-duration="04:22"></button>
+        </div>
+        <div class="chart-legend">
+          <span><span class="legend-chip low"></span>Low</span>
+          <span><span class="legend-chip medium"></span>Medium</span>
+          <span><span class="legend-chip high"></span>High</span>
+          <span><span class="legend-chip peak"></span>Peak</span>
+        </div>
+      </section>
+
+      <section class="track-list" id="trackList">
+        <div class="track-row selected">
+          <div class="track-order">1</div>
+          <div class="track-details">
+            <p class="track-name">Warm Pulse</p>
+            <p class="track-meta">118 BPM · Gm · 4:10</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip low">4</span></div>
+        </div>
+        <div class="track-row">
+          <div class="track-order">2</div>
+          <div class="track-details">
+            <p class="track-name">Deep Motion</p>
+            <p class="track-meta">122 BPM · Am · 5:16</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip medium">6</span></div>
+        </div>
+        <div class="track-row">
+          <div class="track-order">3</div>
+          <div class="track-details">
+            <p class="track-name">Solar Echoes</p>
+            <p class="track-meta">132 BPM · C · 6:12</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip high">8</span></div>
+        </div>
+        <div class="track-row">
+          <div class="track-order">4</div>
+          <div class="track-details">
+            <p class="track-name">Synthetic Rush</p>
+            <p class="track-meta">138 BPM · Fm · 3:40</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip peak">10</span></div>
+        </div>
+        <div class="track-row">
+          <div class="track-order">5</div>
+          <div class="track-details">
+            <p class="track-name">Neon Drift</p>
+            <p class="track-meta">130 BPM · Em · 5:58</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip high">7</span></div>
+        </div>
+        <div class="track-row">
+          <div class="track-order">6</div>
+          <div class="track-details">
+            <p class="track-name">Night Bloom</p>
+            <p class="track-meta">118 BPM · Gm · 4:38</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip medium">5</span></div>
+        </div>
+        <div class="track-row">
+          <div class="track-order">7</div>
+          <div class="track-details">
+            <p class="track-name">Midnight Drive</p>
+            <p class="track-meta">128 BPM · Fm · 4:22</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip low">4</span></div>
+        </div>
+      </section>
+
+      <section class="empty-state hidden" id="emptyState" aria-live="polite">
+        <div class="empty-illustration">📭</div>
+        <h2>Playlist vacía</h2>
+        <p>No hay tracks en esta playlist. Añade pistas para ver la curva de energía de la secuencia.</p>
+      </section>
+
+      <section class="no-results-state hidden" id="noResultsState" aria-live="polite">
+        <div class="empty-illustration">🔎</div>
+        <h2>Sin resultados</h2>
+        <p>Ajusta los filtros o la búsqueda para encontrar pistas en esta playlist.</p>
+      </section>
+    </main>
+
+    <aside class="preview-player" aria-label="Preview Player">
+      <div class="preview-details">
+        <span class="player-label">En reproducción</span>
+        <strong>Synthetic Rush</strong>
+        <span class="player-subtitle">138 BPM · Fm · Peak</span>
+      </div>
+      <div class="player-controls">
+        <button class="player-button">⏮️</button>
+        <button class="player-button primary">▶️</button>
+        <button class="player-button">⏹️</button>
+      </div>
+      <div class="player-progress">
+        <span class="time">0:58</span>
+        <div class="progress-bar"><div class="progress-fill" style="width: 64%;"></div></div>
+        <span class="time">3:40</span>
+      </div>
+      <div class="player-meta">
+        <div class="player-chip">138 BPM</div>
+        <div class="player-chip">Fm</div>
+        <div class="player-chip peak">Peak</div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const playlistState = document.getElementById('playlistState');
+    const emptyState = document.getElementById('emptyState');
+    const noResultsState = document.getElementById('noResultsState');
+    const trackList = document.getElementById('trackList');
+    const energyChart = document.getElementById('energyChart');
+    const segments = energyChart.querySelectorAll('.segment');
+    const rows = trackList.querySelectorAll('.track-row');
+
+    function setState(state) {
+      const isNormal = state === 'normal';
+      trackList.classList.toggle('hidden', !isNormal);
+      energyChart.classList.toggle('hidden', !isNormal);
+      emptyState.classList.toggle('hidden', state !== 'empty');
+      noResultsState.classList.toggle('hidden', state !== 'no-results');
+    }
+
+    function clearSelection() {
+      segments.forEach(s => s.classList.remove('selected'));
+      rows.forEach(r => r.classList.remove('selected'));
+    }
+
+    segments.forEach((segment, index) => {
+      segment.addEventListener('click', () => {
+        clearSelection();
+        segment.classList.add('selected');
+        rows[index].classList.add('selected');
+      });
+      segment.addEventListener('mouseenter', () => {
+        const title = segment.dataset.title;
+        const bpm = segment.dataset.bpm;
+        const key = segment.dataset.key;
+        const energy = segment.dataset.energy;
+        const duration = segment.dataset.duration;
+        segment.title = `${title} · ${bpm} BPM · ${key} · energy ${energy} · ${duration}`;
+      });
+    });
+
+    playlistState.addEventListener('change', () => setState(playlistState.value));
+    setState('normal');
+  </script>
+</body>
+</html>
