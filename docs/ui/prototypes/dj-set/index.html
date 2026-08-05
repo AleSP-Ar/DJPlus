@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DJPlus DJ Set | Prototipo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegación principal">
+      <div class="sidebar-brand">DJPlus</div>
+      <nav class="sidebar-nav">
+        <button type="button" class="nav-item" aria-label="Biblioteca" title="Biblioteca">🎵</button>
+        <button type="button" class="nav-item" aria-label="Playlist" title="Playlist">🎚️</button>
+        <button type="button" class="nav-item active" aria-label="DJ Set" title="DJ Set">🧭</button>
+        <button type="button" class="nav-item" aria-label="Colecciones" title="Colecciones">📂</button>
+      </nav>
+      <div class="sidebar-footer">
+        <button type="button" class="nav-item" aria-label="Configuración" title="Configuración">⚙️</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">DJ Set</p>
+          <h1>DJ Set - Sunrise Journey</h1>
+          <p class="subtitle">Un viaje de energía completo con capítulos y picos destacados.</p>
+        </div>
+        <div class="header-metrics">
+          <div class="metric-card">
+            <span class="metric-value">18</span>
+            <span class="metric-label">Pistas</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">1:58:32</span>
+            <span class="metric-label">Duración total</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">5</span>
+            <span class="metric-label">Capítulos</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="toolbar playlist-toolbar">
+        <div class="toolbar-group">
+          <div class="input-group">
+            <span class="input-icon">🔎</span>
+            <input id="search" type="search" placeholder="Buscar en el set..." aria-label="Buscar en el set">
+          </div>
+          <button class="action-button">Editar capítulo</button>
+          <button class="action-button">Reordenar</button>
+          <button class="action-button secondary">Guardar</button>
+        </div>
+        <div class="toolbar-group right">
+          <div class="view-status">Tracks activos: 18</div>
+          <select id="setState" aria-label="Estado del set">
+            <option value="normal">Set normal</option>
+            <option value="empty">Set vacío</option>
+            <option value="no-results">Sin resultados</option>
+          </select>
+          <label class="toggle-label">
+            <input type="checkbox" id="toggleTargetCurve">
+            Curva objetivo
+          </label>
+        </div>
+      </section>
+
+      <section class="energy-chart djset-chart" aria-label="Viaje de energía del DJ Set">
+        <div class="chart-top-row">
+          <div class="chart-title">Viaje de energía</div>
+          <div class="chapter-tags">
+            <span class="chapter-tag warmup">Warm-up</span>
+            <span class="chapter-tag organic">Organic</span>
+            <span class="chapter-tag build">Build</span>
+            <span class="chapter-tag peak-time">Peak Time</span>
+            <span class="chapter-tag closing">Closing</span>
+          </div>
+        </div>
+        <div class="chart-track" id="djChart">
+          <button class="segment warmup" data-title="Warm Pulse" data-chapter="Warm-up" data-bpm="118" data-key="Gm" data-energy="4" data-duration="04:10" aria-label="Warm Pulse - Warm-up - 118 BPM - Gm - energía 4 - 4:10"></button>
+          <button class="segment organic" data-title="Aura Flow" data-chapter="Organic" data-bpm="120" data-key="F" data-energy="5" data-duration="05:03"></button>
+          <button class="segment build" data-title="Rising Tide" data-chapter="Build" data-bpm="126" data-key="Dm" data-energy="7" data-duration="05:44"></button>
+          <button class="segment peak" data-title="Solar Echoes" data-chapter="Peak Time" data-bpm="132" data-key="C" data-energy="9" data-duration="06:12"></button>
+          <button class="segment peak" data-title="Synthetic Rush" data-chapter="Peak Time" data-bpm="138" data-key="Fm" data-energy="10" data-duration="03:40"></button>
+          <button class="segment closing" data-title="Night Bloom" data-chapter="Closing" data-bpm="118" data-key="Gm" data-energy="5" data-duration="04:38"></button>
+        </div>
+        <svg class="target-curve hidden" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0,30 C15,24 25,18 40,16 C55,14 65,22 77,18 C88,12 95,16 100,10" fill="none" stroke="#f8b94a" stroke-width="2" stroke-dasharray="4 4"/>
+        </svg>
+        <div class="chapter-legend">
+          <div class="chapter-item"><span class="legend-dot warmup"></span>Warm-up</div>
+          <div class="chapter-item"><span class="legend-dot organic"></span>Organic</div>
+          <div class="chapter-item"><span class="legend-dot build"></span>Build</div>
+          <div class="chapter-item"><span class="legend-dot peak-time"></span>Peak Time</div>
+          <div class="chapter-item"><span class="legend-dot closing"></span>Closing</div>
+          <div class="chapter-item"><span class="legend-dot missing"></span>Datos faltantes</div>
+        </div>
+      </section>
+
+      <section class="track-list" id="trackList">
+        <div class="track-row selected">
+          <div class="track-order">1</div>
+          <div class="track-details">
+            <p class="track-name">Warm Pulse</p>
+            <p class="track-meta">Warm-up · 118 BPM · Gm · 4:10</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip low">4</span></div>
+        </div>
+        <div class="track-row">
+          <div class="track-order">2</div>
+          <div class="track-details">
+            <p class="track-name">Aura Flow</p>
+            <p class="track-meta">Organic · 120 BPM · F · 5:03</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip medium">5</span></div>
+        </div>
+        <div class="track-row">
+          <div class="track-order">3</div>
+          <div class="track-details">
+            <p class="track-name">Rising Tide</p>
+            <p class="track-meta">Build · 126 BPM · Dm · 5:44</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip high">7</span></div>
+        </div>
+        <div class="track-row">
+          <div class="track-order">4</div>
+          <div class="track-details">
+            <p class="track-name">Solar Echoes</p>
+            <p class="track-meta">Peak Time · 132 BPM · C · 6:12</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip peak">9</span></div>
+        </div>
+        <div class="track-row conflict">
+          <div class="track-order">5</div>
+          <div class="track-details">
+            <p class="track-name">Synthetic Rush</p>
+            <p class="track-meta">Peak Time · 138 BPM · Fm · 3:40</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip peak">10</span></div>
+        </div>
+        <div class="track-row missing">
+          <div class="track-order">6</div>
+          <div class="track-details">
+            <p class="track-name">Twilight Fade</p>
+            <p class="track-meta">Closing · bpm desconocido · datos faltantes</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip missing">?</span></div>
+        </div>
+        <div class="track-row">
+          <div class="track-order">7</div>
+          <div class="track-details">
+            <p class="track-name">Night Bloom</p>
+            <p class="track-meta">Closing · 118 BPM · Gm · 4:38</p>
+          </div>
+          <div class="track-energy"><span class="energy-chip medium">5</span></div>
+        </div>
+      </section>
+
+      <section class="empty-state hidden" id="emptyState" aria-live="polite">
+        <div class="empty-illustration">📭</div>
+        <h2>DJ Set vacío</h2>
+        <p>No hay pistas en este set. Añade contenido para ver el viaje de energía completo.</p>
+      </section>
+
+      <section class="no-results-state hidden" id="noResultsState" aria-live="polite">
+        <div class="empty-illustration">🔎</div>
+        <h2>Sin resultados</h2>
+        <p>Ajusta la búsqueda o los filtros para encontrar pistas dentro del set.</p>
+      </section>
+    </main>
+
+    <aside class="preview-player" aria-label="Preview Player">
+      <div class="preview-details">
+        <span class="player-label">En reproducción</span>
+        <strong>Synthetic Rush</strong>
+        <span class="player-subtitle">138 BPM · Fm · Peak Time</span>
+      </div>
+      <div class="player-controls">
+        <button class="player-button">⏮️</button>
+        <button class="player-button primary">▶️</button>
+        <button class="player-button">⏹️</button>
+      </div>
+      <div class="player-progress">
+        <span class="time">1:24</span>
+        <div class="progress-bar"><div class="progress-fill" style="width: 46%;"></div></div>
+        <span class="time">3:40</span>
+      </div>
+      <div class="player-meta">
+        <div class="player-chip">138 BPM</div>
+        <div class="player-chip">Fm</div>
+        <div class="player-chip peak">Peak</div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const setState = document.getElementById('setState');
+    const toggleTargetCurve = document.getElementById('toggleTargetCurve');
+    const emptyState = document.getElementById('emptyState');
+    const noResultsState = document.getElementById('noResultsState');
+    const trackList = document.getElementById('trackList');
+    const djChart = document.getElementById('djChart');
+    const targetCurve = document.querySelector('.target-curve');
+    const segments = djChart.querySelectorAll('.segment');
+    const rows = trackList.querySelectorAll('.track-row');
+
+    function setViewState(value) {
+      const normal = value === 'normal';
+      trackList.classList.toggle('hidden', !normal);
+      djChart.parentElement.classList.toggle('hidden', !normal);
+      emptyState.classList.toggle('hidden', value !== 'empty');
+      noResultsState.classList.toggle('hidden', value !== 'no-results');
+    }
+
+    function clearSelection() {
+      segments.forEach(s => s.classList.remove('selected'));
+      rows.forEach(r => r.classList.remove('selected'));
+    }
+
+    segments.forEach((segment, index) => {
+      segment.addEventListener('click', () => {
+        clearSelection();
+        segment.classList.add('selected');
+        rows[index].classList.add('selected');
+      });
+      segment.addEventListener('mouseenter', () => {
+        const title = segment.dataset.title;
+        const chapter = segment.dataset.chapter;
+        const bpm = segment.dataset.bpm;
+        const key = segment.dataset.key;
+        const energy = segment.dataset.energy;
+        const duration = segment.dataset.duration;
+        segment.title = `${title} · ${chapter} · ${bpm || 'BPM desconocido'} · ${key || 'tonalidad desconocida'} · energy ${energy || 'n/a'} · ${duration || 'duración desconocida'}`;
+      });
+    });
+
+    setState.addEventListener('change', () => setViewState(setState.value));
+    toggleTargetCurve.addEventListener('change', () => {
+      targetCurve.classList.toggle('hidden', !toggleTargetCurve.checked);
+    });
+
+    setViewState('normal');
+  </script>
+</body>
+</html>
