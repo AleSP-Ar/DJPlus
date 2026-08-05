@@ -5,6 +5,7 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
+from app.core.user_paths import get_user_data_paths, migrate_legacy_database
 
 try:
     from .migrations import run_migrations
@@ -13,7 +14,9 @@ except ImportError:  # pragma: no cover - fallback for direct execution
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATABASE_PATH = PROJECT_ROOT / "data" / "djplus.db"
+USER_DATA_PATHS = get_user_data_paths()
+DATABASE_PATH = USER_DATA_PATHS.database
+LEGACY_DATABASE_PATH = PROJECT_ROOT / "data" / "djplus.db"
 DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
 
 engine = create_engine(
@@ -32,7 +35,9 @@ _LOGGER = logging.getLogger("djplus.database")
 
 def init_database() -> None:
     # Directory creation belongs to explicit startup, never module import.
+    USER_DATA_PATHS.ensure_directories()
     DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    migrate_legacy_database(LEGACY_DATABASE_PATH, DATABASE_PATH)
     _LOGGER.info(
         "Database migration started",
         extra={"event_name": "database_migration_started", "component": "database"},

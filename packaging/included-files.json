@@ -1,0 +1,33 @@
+{
+  "entry_point": "app/main.py",
+  "included": [
+    "app",
+    "app/database/migrations.py",
+    "runtime/ffmpeg/ffmpeg.exe",
+    "runtime/ffmpeg/CHECKSUM.sha256",
+    "runtime/ffmpeg/LICENSE.txt",
+    "runtime/ffmpeg/NOTICE.txt",
+    "runtime/ffmpeg/SOURCE.txt",
+    "runtime/ffmpeg/VERSION.txt",
+    "runtime/ffmpeg/BUILD_CONFIGURATION.txt",
+    "README.md",
+    "docs/releases/V0_23_0_RELEASE.md"
+  ],
+  "excluded": [
+    "tests",
+    "data",
+    ".venv",
+    "__pycache__",
+    "*.pyc",
+    "*.sqlite",
+    "*.db",
+    ".env",
+    "build",
+    "dist",
+    "academy",
+    "database",
+    "models",
+    "services",
+    "ui"
+  ]
+}

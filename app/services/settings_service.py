@@ -10,6 +10,7 @@ from pathlib import Path
 import shutil
 import tempfile
 from threading import RLock
+from app.core.user_paths import get_user_data_paths
 
 from .audio_decoder import OFFICIAL_AUDIO_FORMAT_ORDER
 from .assistant_provider import ProviderConfigDTO
@@ -264,8 +265,7 @@ class SettingsService:
         if config_path is not None and appdata_path is not None:
             raise TypeError("Use config_path o appdata_path, no ambos.")
         if config_path is None:
-            root = Path(appdata_path) if appdata_path is not None else Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
-            config_path = root / "DJPlus" / "config.json"
+            config_path = (Path(appdata_path) / "DJPlus" / "config.json") if appdata_path is not None else get_user_data_paths().config
         self._path = Path(config_path).expanduser()
         self._replace = replace_func or os.replace
         self._copy = copy_func or shutil.copy2
