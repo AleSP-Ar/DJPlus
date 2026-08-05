@@ -12,7 +12,7 @@ class ReleaseVersionTests(unittest.TestCase):
         current_release_files = (
             root / "README.md",
             root / "docs" / "roadmap" / "MILESTONES.md",
-            root / "docs" / "releases" / "V0_23_0_RELEASE.md",
+            root / "docs" / "releases" / "V1_0_0_RC1_RELEASE.md",
         )
         expected = f"v{VERSION}"
         for path in current_release_files:

@@ -11,7 +11,7 @@
     "runtime/ffmpeg/VERSION.txt",
     "runtime/ffmpeg/BUILD_CONFIGURATION.txt",
     "README.md",
-    "docs/releases/V0_23_0_RELEASE.md"
+    "docs/releases/V1_0_0_RC1_RELEASE.md"
   ],
   "excluded": [
     "tests",

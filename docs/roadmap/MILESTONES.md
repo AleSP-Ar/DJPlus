@@ -1,5 +1,9 @@
 # Milestones
 
+## v1.0.0-rc1 — Release Candidate
+
+Esta versión candidata cierra la ruta de datos segura, la migración conservadora de la base legacy y el empaquetado PyInstaller reproducible. La validación de escritorio manual fue aprobada y las mejoras puramente visuales quedan diferidas. El backend funcional, el esquema, la UI existente, las integraciones DJ y los proveedores externos se mantienen sin cambios.
+
 ## v0.23.0 — UI Freeze cerrado
 
 La Fase Gráfica completa sus diez sprints: shell y navegación, Biblioteca, Preview Player, Colecciones/Playlists, Import Manager, Metadata, Assistant/Diagnóstico, feedback y accesibilidad. El trabajo es exclusivamente visual y conserva el backend congelado de v0.22.0.

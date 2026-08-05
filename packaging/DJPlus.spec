@@ -21,7 +21,7 @@ datas = [
     (str(path), "runtime/ffmpeg") for path in required
 ] + [
     (str(project_root / "README.md"), "."),
-    (str(project_root / "docs" / "releases" / "V0_23_0_RELEASE.md"), "docs/releases"),
+    (str(project_root / "docs" / "releases" / "V1_0_0_RC1_RELEASE.md"), "docs/releases"),
 ]
 hiddenimports = collect_submodules("app.services") + collect_submodules("app.ui") + [
     "app.database.migrations", "app.database.models", "app.database.unit_of_work",

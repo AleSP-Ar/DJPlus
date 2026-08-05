@@ -27,7 +27,7 @@ if (-not $SkipFfmpegChecksum) {
 }
 if (-not (Test-Path -LiteralPath $Python -PathType Leaf)) { throw "No se encontró Python de build: $Python" }
 
-foreach ($directory in @("build", "dist")) {
+foreach ($directory in @("build", "dist", ".build-venv")) {
     $target = Join-Path $projectRoot $directory
     if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
 }
