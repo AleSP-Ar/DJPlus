@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DJPlus Biblioteca | Prototipo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegación principal">
+      <div class="sidebar-brand">DJPlus</div>
+      <nav class="sidebar-nav">
+        <button type="button" class="nav-item active" aria-label="Biblioteca" title="Biblioteca">
+          <span class="icon">🎵</span>
+        </button>
+        <button type="button" class="nav-item" aria-label="Playlist" title="Playlist">
+          <span class="icon">🎚️</span>
+        </button>
+        <button type="button" class="nav-item" aria-label="DJ Set" title="DJ Set">
+          <span class="icon">🧭</span>
+        </button>
+        <button type="button" class="nav-item" aria-label="Colecciones" title="Colecciones">
+          <span class="icon">📂</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <button type="button" class="nav-item" aria-label="Configuración" title="Configuración">
+          <span class="icon">⚙️</span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Biblioteca</p>
+          <h1>Biblioteca</h1>
+          <p class="subtitle">Explora, filtra y selecciona tu colección de tracks con una vista profesional y compacta.</p>
+        </div>
+        <div class="header-metrics">
+          <div class="metric-card">
+            <span class="metric-value">1.248</span>
+            <span class="metric-label">Tracks</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">135 BPM</span>
+            <span class="metric-label">Rango común</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">24</span>
+            <span class="metric-label">Por su sesión</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="toolbar">
+        <div class="toolbar-group">
+          <div class="input-group">
+            <label for="search" class="sr-only">Buscar tracks</label>
+            <div class="input-icon">🔎</div>
+            <input id="search" type="search" placeholder="Buscar tracks..." aria-label="Buscar tracks">
+          </div>
+          <div class="filter-group">
+            <button class="filter-pill active" data-filter="all">Todos</button>
+            <button class="filter-pill" data-filter="energy">Energía</button>
+            <button class="filter-pill" data-filter="bpm">BPM</button>
+            <button class="filter-pill" data-filter="key">Tonalidad</button>
+          </div>
+        </div>
+        <div class="toolbar-group right">
+          <div class="view-switch" role="tablist" aria-label="Selector de vista">
+            <button class="view-tab active" data-view="grid" role="tab" aria-selected="true">Portadas</button>
+            <button class="view-tab" data-view="table" role="tab" aria-selected="false">Tabla</button>
+          </div>
+          <div class="state-switcher">
+            <label for="mode">Estado</label>
+            <select id="mode" aria-label="Seleccionar estado">
+              <option value="normal">Normal</option>
+              <option value="empty">Vacío</option>
+              <option value="no-results">Sin resultados</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="filter-panel" aria-label="Filtros principales">
+        <div class="filter-column">
+          <span class="filter-title">BPM</span>
+          <div class="chips">
+            <button class="chip" data-chip="bpm">120</button>
+            <button class="chip active" data-chip="bpm">128</button>
+            <button class="chip" data-chip="bpm">135</button>
+          </div>
+        </div>
+        <div class="filter-column">
+          <span class="filter-title">Tonalidad</span>
+          <div class="chips">
+            <button class="chip">Am</button>
+            <button class="chip active">Fm</button>
+            <button class="chip">C</button>
+          </div>
+        </div>
+        <div class="filter-column">
+          <span class="filter-title">Energía</span>
+          <div class="chips">
+            <button class="chip">Low</button>
+            <button class="chip active">Medium</button>
+            <button class="chip">High</button>
+          </div>
+        </div>
+        <div class="filter-column rating">
+          <span class="filter-title">Rating</span>
+          <div class="chips">
+            <button class="chip active">★★★★☆</button>
+            <button class="chip">★★★☆☆</button>
+            <button class="chip">★★☆☆☆</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="content-area" id="contentArea">
+        <div class="grid-view" id="gridView">
+          <article class="track-card selected">
+            <div class="cover" aria-hidden="true">🎧</div>
+            <div class="track-info">
+              <h2>Midnight Drive</h2>
+              <p class="artist">Nexus Pulse</p>
+              <div class="track-chips">
+                <span class="chip neutral">128 BPM</span>
+                <span class="chip neutral">Fm</span>
+                <span class="chip energy">Energy 8</span>
+                <span class="chip neutral">★★★★☆</span>
+              </div>
+            </div>
+          </article>
+          <article class="track-card">
+            <div class="cover" aria-hidden="true">🎛️</div>
+            <div class="track-info">
+              <h2>Deep Motion</h2>
+              <p class="artist">Luna Tek</p>
+              <div class="track-chips">
+                <span class="chip neutral">122 BPM</span>
+                <span class="chip neutral">Am</span>
+                <span class="chip energy">Energy 7</span>
+                <span class="chip neutral">★★★☆☆</span>
+              </div>
+            </div>
+          </article>
+          <article class="track-card">
+            <div class="cover" aria-hidden="true">🎚️</div>
+            <div class="track-info">
+              <h2>Solar Echoes</h2>
+              <p class="artist">Neon Atlas</p>
+              <div class="track-chips">
+                <span class="chip neutral">132 BPM</span>
+                <span class="chip neutral">C</span>
+                <span class="chip energy">Energy 9</span>
+                <span class="chip neutral">★★★★★</span>
+              </div>
+            </div>
+          </article>
+          <article class="track-card">
+            <div class="cover" aria-hidden="true">🎶</div>
+            <div class="track-info">
+              <h2>Night Bloom</h2>
+              <p class="artist">Velvet Sky</p>
+              <div class="track-chips">
+                <span class="chip neutral">118 BPM</span>
+                <span class="chip neutral">Gm</span>
+                <span class="chip energy">Energy 6</span>
+                <span class="chip neutral">★★★☆☆</span>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="table-view hidden" id="tableView" aria-label="Vista de tabla de tracks">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Título</th>
+                <th>Artista</th>
+                <th>BPM</th>
+                <th>Tonalidad</th>
+                <th>Energía</th>
+                <th>Rating</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="selected">
+                <td>1</td>
+                <td>Midnight Drive</td>
+                <td>Nexus Pulse</td>
+                <td>128</td>
+                <td>Fm</td>
+                <td>8</td>
+                <td>★★★★☆</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>Deep Motion</td>
+                <td>Luna Tek</td>
+                <td>122</td>
+                <td>Am</td>
+                <td>7</td>
+                <td>★★★☆☆</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>Solar Echoes</td>
+                <td>Neon Atlas</td>
+                <td>132</td>
+                <td>C</td>
+                <td>9</td>
+                <td>★★★★★</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>Night Bloom</td>
+                <td>Velvet Sky</td>
+                <td>118</td>
+                <td>Gm</td>
+                <td>6</td>
+                <td>★★★☆☆</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="empty-state hidden" id="emptyState" aria-live="polite">
+          <div class="empty-illustration">📭</div>
+          <h2>Biblioteca vacía</h2>
+          <p>No hay tracks cargados aún. Importa música o añade archivos para comenzar a construir tu colección.</p>
+        </div>
+
+        <div class="no-results-state hidden" id="noResultsState" aria-live="polite">
+          <div class="empty-illustration">🔍</div>
+          <h2>Sin resultados</h2>
+          <p>No se encontraron tracks para este filtro. Ajusta tu búsqueda o elimina filtros.</p>
+        </div>
+      </section>
+    </main>
+
+    <aside class="preview-player" aria-label="Preview Player">
+      <div class="preview-details">
+        <span class="player-label">En reproducción</span>
+        <strong>Midnight Drive</strong>
+        <span class="player-subtitle">Nexus Pulse · 128 BPM · Fm</span>
+      </div>
+      <div class="player-controls">
+        <button class="player-button">⏮️</button>
+        <button class="player-button primary">▶️</button>
+        <button class="player-button">⏹️</button>
+      </div>
+      <div class="player-progress">
+        <span class="time">1:12</span>
+        <div class="progress-bar" aria-hidden="true">
+          <div class="progress-fill" style="width: 48%;"></div>
+        </div>
+        <span class="time">2:58</span>
+      </div>
+      <div class="player-meta">
+        <div class="player-chip">128 BPM</div>
+        <div class="player-chip">Fm</div>
+        <div class="player-chip energy">Energy 8</div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const viewButtons = document.querySelectorAll('.view-tab');
+    const gridView = document.getElementById('gridView');
+    const tableView = document.getElementById('tableView');
+    const modeSelect = document.getElementById('mode');
+    const emptyState = document.getElementById('emptyState');
+    const noResultsState = document.getElementById('noResultsState');
+    const contentArea = document.getElementById('contentArea');
+
+    function updateView(view) {
+      viewButtons.forEach(btn => {
+        const active = btn.dataset.view === view;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', active);
+      });
+      gridView.classList.toggle('hidden', view !== 'grid');
+      tableView.classList.toggle('hidden', view !== 'table');
+    }
+
+    function updateState(state) {
+      gridView.classList.toggle('hidden', state !== 'normal');
+      tableView.classList.toggle('hidden', state !== 'normal');
+      emptyState.classList.toggle('hidden', state !== 'empty');
+      noResultsState.classList.toggle('hidden', state !== 'no-results');
+    }
+
+    viewButtons.forEach(button => {
+      button.addEventListener('click', () => updateView(button.dataset.view));
+    });
+
+    modeSelect.addEventListener('change', () => updateState(modeSelect.value));
+
+    updateView('grid');
+    updateState('normal');
+  </script>
+</body>
+</html>
