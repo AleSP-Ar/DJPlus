@@ -99,12 +99,15 @@ class MainWindowCompositionTests(unittest.TestCase):
             self.assertEqual(window.workspace_stack.indexOf(window.preview_player_bar), -1)
 
             for section, label in MainWindow.SECTIONS:
+                previous_bar = window.preview_player_bar
                 window.navigation_buttons[section].click()
                 self.assertEqual(window.current_section, section)
                 self.assertEqual(window.page_title_label.text(), label)
                 self.assertTrue(window.navigation_buttons[section].isChecked())
                 self.assertIsNotNone(window.workspace_stack.currentWidget())
                 self.assertIsNotNone(window.preview_player_bar)
+                self.assertIs(window.preview_player_bar, previous_bar)
+                self.assertEqual(window.workspace_stack.indexOf(window.preview_player_bar), -1)
         finally:
             window.close()
         self.assertTrue(player._closed)

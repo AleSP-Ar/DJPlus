@@ -19,6 +19,7 @@ try:
     from .playlist_panel import PlaylistPanel
     from .track_metadata_panel import TrackMetadataPanel
     from .widgets.preview_player_bar import PreviewPlayerBar
+    from .widgets.navigation_sidebar import NavigationSidebar
     from app.services.track_metadata_facade import TrackMetadataFacade
     from app.services.track_metadata_editor import TrackMetadataEditorService
     from app.services.action_pipeline import ActionPipeline
@@ -34,6 +35,7 @@ except ImportError:  # pragma: no cover - fallback for direct execution
     from ui.playlist_panel import PlaylistPanel
     from app.ui.track_metadata_panel import TrackMetadataPanel
     from app.ui.widgets.preview_player_bar import PreviewPlayerBar
+    from app.ui.widgets.navigation_sidebar import NavigationSidebar
     from app.services.track_metadata_facade import TrackMetadataFacade
     from app.services.track_metadata_editor import TrackMetadataEditorService
     from app.services.action_pipeline import ActionPipeline
@@ -89,8 +91,6 @@ class MainWindow(QMainWindow):
         self.resize(1280, 800)
         self.setMinimumSize(900, 560)
         self.create_ui()
-
-    # _apply_shell_style removed: shell styling is provided exclusively by app/ui/styles/app.qss
 
     def create_ui(self):
         central = QWidget(self)
@@ -169,23 +169,14 @@ class MainWindow(QMainWindow):
         return header
 
     def _build_navigation(self):
-        rail = QFrame()
-        rail.setObjectName("navigationRail")
-        rail.setMinimumWidth(220)
-        rail.setMaximumWidth(280)
-        layout = QVBoxLayout(rail)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(8)
-        for section, label in self.SECTIONS:
-            button = QPushButton(label)
-            button.setObjectName(f"navigation_{section}")
-            button.setCheckable(True)
-            button.setAccessibleName(f"Ir a {label}")
-            button.clicked.connect(lambda _checked=False, key=section: self.navigate_to(key))
-            layout.addWidget(button)
-            self.navigation_buttons[section] = button
-        layout.addStretch(1)
-        return rail
+        nav = NavigationSidebar(self.SECTIONS)
+        nav.setMinimumWidth(220)
+        nav.setMaximumWidth(280)
+        # expose the mapping for backward compatibility with existing tests/code
+        self.navigation_sidebar = nav
+        self.navigation_buttons = nav.buttons
+        nav.section_requested.connect(self.navigate_to)
+        return nav
 
     def _build_metadata_panel(self, library):
         if self._dependencies.track_metadata_panel is not None:
@@ -236,8 +227,13 @@ class MainWindow(QMainWindow):
         if section not in self._page_indexes:
             raise ValueError(f"Sección desconocida: {section}")
         self.workspace_stack.setCurrentIndex(self._page_indexes[section])
-        for key, button in self.navigation_buttons.items():
-            button.setChecked(key == section)
+        # delegate checked-state updates to the navigation component
+        try:
+            self.navigation_sidebar.set_current_section(section)
+        except Exception:
+            # fallback: ensure mapping is kept in sync
+            for key, button in self.navigation_buttons.items():
+                button.setChecked(key == section)
         label = dict(self.SECTIONS)[section]
         self.page_title_label.setText(label)
         self.current_section = section

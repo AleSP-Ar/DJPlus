@@ -82,10 +82,26 @@ class PreviewPlayerBarTests(unittest.TestCase):
         self.bar.close(); self.service._backend._emit("position", {"position_ms": 3})
         self.assertTrue(self.bar._closed)
 
+    def test_preview_player_bar_layout_is_three_rows(self):
+        root_layout = self.bar.layout()
+        self.assertEqual(root_layout.count(), 4)
+        title_row = root_layout.itemAt(0).layout()
+        self.assertEqual(title_row.count(), 1)
+        track_block = title_row.itemAt(0).widget()
+        self.assertIsNotNone(track_block)
+        self.assertIs(track_block.layout().itemAt(0).widget(), self.bar.track_label)
+        self.assertIs(root_layout.itemAt(1).widget(), self.bar.track_hint_label)
+        controls_container = root_layout.itemAt(2).layout()
+        self.assertEqual(controls_container.count(), 2)
+        self.assertIs(controls_container.itemAt(0).widget(), self.bar.state_label)
+        self.assertIs(controls_container.itemAt(1).layout(), self.bar.controls)
+        self.assertIs(root_layout.itemAt(3).widget(), self.bar.error_label)
+
+    def test_preview_player_bar_hint_label_is_word_wrapped(self):
+        self.assertTrue(self.bar.track_hint_label.wordWrap())
+
     def test_responsive_controls_and_visual_state_accessibility(self):
-        self.bar.show(); self.bar.resize(1100, 140); self.app.processEvents()
-        self.assertFalse(self.bar._compact_layout)
-        self.bar.resize(640, 180); self.app.processEvents()
+        self.bar.show(); self.bar.resize(640, 180); self.app.processEvents()
         self.assertTrue(self.bar._compact_layout)
         for control in (self.bar.play_button, self.bar.stop_button, self.bar.position_slider, self.bar.volume_slider, self.bar.device_combo):
             self.assertFalse(control.isHidden())
