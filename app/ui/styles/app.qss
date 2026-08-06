@@ -1,0 +1,103 @@
+QMainWindow,
+QWidget#appShell {
+    background-color: #0B1020;
+    color: #E7EDF8;
+}
+
+QWidget {
+    color: #E7EDF8;
+    font-family: "Segoe UI";
+    font-size: 13px;
+}
+
+QToolTip {
+    color: #E7EDF8;
+    background-color: #1B263D;
+    border: 1px solid #2C3953;
+    padding: 5px 7px;
+}
+
+QPushButton {
+    min-height: 30px;
+    padding: 4px 10px;
+    color: #E7EDF8;
+    background-color: #1B263D;
+    border: 1px solid #2C3953;
+    border-radius: 4px;
+}
+
+QPushButton:hover:!disabled {
+    background-color: #25324C;
+    border-color: #465777;
+}
+
+QPushButton:pressed:!disabled {
+    background-color: #111A2C;
+}
+
+QPushButton:checked {
+    color: #FFFFFF;
+    background-color: #6C63FF;
+    border-color: #827BFF;
+    font-weight: 600;
+}
+
+QPushButton:disabled {
+    color: #68758D;
+    background-color: #141C2E;
+    border-color: #26324A;
+}
+
+QLineEdit,
+QComboBox,
+QSpinBox,
+QDoubleSpinBox,
+QTextEdit,
+QPlainTextEdit {
+    min-height: 30px;
+    padding: 3px 7px;
+    color: #E7EDF8;
+    background-color: #141C2E;
+    border: 1px solid #2C3953;
+    border-radius: 4px;
+    selection-background-color: #6C63FF;
+}
+
+QPushButton:focus,
+QLineEdit:focus,
+QComboBox:focus,
+QSpinBox:focus,
+QDoubleSpinBox:focus,
+QSlider:focus,
+QListWidget:focus,
+QTableView:focus,
+QTextEdit:focus,
+QPlainTextEdit:focus {
+    border: 2px solid #58A6FF;
+}
+
+QTableView,
+QListWidget,
+QTreeWidget {
+    color: #E7EDF8;
+    background-color: #10182A;
+    alternate-background-color: #141E33;
+    border: 1px solid #2C3953;
+    selection-color: #FFFFFF;
+    selection-background-color: #37336F;
+}
+
+QHeaderView::section {
+    padding: 6px 8px;
+    color: #98A6BE;
+    background-color: #141C2E;
+    border: 0;
+    border-right: 1px solid #2C3953;
+    border-bottom: 1px solid #2C3953;
+    font-weight: 600;
+}
+
+QLabel[feedbackKind="error"] { color: #FF6B6B; }
+QLabel[feedbackKind="warning"] { color: #F2C14E; }
+QLabel[feedbackKind="success"] { color: #38D39F; }
+QLabel[feedbackKind="info"] { color: #98A6BE; }

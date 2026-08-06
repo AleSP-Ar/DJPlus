@@ -22,6 +22,8 @@ datas = [
 ] + [
     (str(project_root / "README.md"), "."),
     (str(project_root / "docs" / "releases" / "V1_0_0_RC1_RELEASE.md"), "docs/releases"),
+] + [
+    (str(project_root / "app" / "ui" / "styles" / "app.qss"), "app/ui/styles"),
 ]
 hiddenimports = collect_submodules("app.services") + collect_submodules("app.ui") + [
     "app.database.migrations", "app.database.models", "app.database.unit_of_work",

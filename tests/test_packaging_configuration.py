@@ -34,3 +34,7 @@ class PackagingConfigurationTests(unittest.TestCase):
             self.assertIn(expected, smoke)
         for expected in ("Biblioteca", "Colecciones", "Playlists", "Importar", "Metadata", "Assistant", "Diagnóstico", "MP3", "FLAC", "AIFF", "WAV"):
             self.assertIn(expected, guide)
+    def test_spec_bundles_global_stylesheet(self):
+        spec = (self.root / "packaging" / "DJPlus.spec").read_text(encoding="utf-8")
+        self.assertIn("app.qss", spec)
+        self.assertIn("app/ui/styles", spec)

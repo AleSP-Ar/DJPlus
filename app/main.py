@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QApplication
 try:
     from .database import init_database
     from .ui.main_window import MainWindow
+    from .ui.styles import apply_global_stylesheet
     from .services.settings_service import SettingsService
     from .services.app_logging_service import AppLoggingService
     from .services.history_service import HistoryService
@@ -12,6 +13,7 @@ try:
 except ImportError:  # pragma: no cover - fallback for direct execution
     from app.database import init_database
     from app.ui.main_window import MainWindow
+    from app.ui.styles import apply_global_stylesheet
     from app.services.settings_service import SettingsService
     from app.services.app_logging_service import AppLoggingService
     from app.services.history_service import HistoryService
@@ -30,6 +32,7 @@ def main():
         init_database()
         logger.info("Application started", extra={"event_name": "application_started", "component": "ui"})
         app = QApplication(sys.argv)
+        apply_global_stylesheet(app)
         history_service = HistoryService()
         preview_player = create_preview_player_service(
             logger=logging_service.get_logger("preview"), settings_service=settings,

@@ -1,0 +1,25 @@
+"""Tokens visuales canónicos de DJPlus."""
+
+from typing import Final
+
+COLOR_BACKGROUND: Final = "#0B1020"
+COLOR_SURFACE: Final = "#141C2E"
+COLOR_SURFACE_ELEVATED: Final = "#1B263D"
+COLOR_BORDER: Final = "#2C3953"
+COLOR_TEXT: Final = "#E7EDF8"
+COLOR_TEXT_MUTED: Final = "#98A6BE"
+COLOR_ACCENT: Final = "#6C63FF"
+COLOR_ACCENT_HOVER: Final = "#827BFF"
+COLOR_FOCUS: Final = "#58A6FF"
+COLOR_ERROR: Final = "#FF6B6B"
+COLOR_WARNING: Final = "#F2C14E"
+COLOR_SUCCESS: Final = "#38D39F"
+COLOR_MISSING: Final = "#68758D"
+RADIUS_SMALL: Final = 4
+RADIUS_MEDIUM: Final = 8
+RADIUS_LARGE: Final = 12
+SPACE_XS: Final = 4
+SPACE_SM: Final = 8
+SPACE_MD: Final = 12
+SPACE_LG: Final = 16
+SPACE_XL: Final = 24
