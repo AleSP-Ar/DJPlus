@@ -20,6 +20,7 @@ try:
     from .track_metadata_panel import TrackMetadataPanel
     from .widgets.preview_player_bar import PreviewPlayerBar
     from .widgets.navigation_sidebar import NavigationSidebar
+    from .widgets.context_header import ContextHeader
     from app.services.track_metadata_facade import TrackMetadataFacade
     from app.services.track_metadata_editor import TrackMetadataEditorService
     from app.services.action_pipeline import ActionPipeline
@@ -36,6 +37,7 @@ except ImportError:  # pragma: no cover - fallback for direct execution
     from app.ui.track_metadata_panel import TrackMetadataPanel
     from app.ui.widgets.preview_player_bar import PreviewPlayerBar
     from app.ui.widgets.navigation_sidebar import NavigationSidebar
+    from app.ui.widgets.context_header import ContextHeader
     from app.services.track_metadata_facade import TrackMetadataFacade
     from app.services.track_metadata_editor import TrackMetadataEditorService
     from app.services.action_pipeline import ActionPipeline
@@ -99,7 +101,9 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(12)
 
-        root.addLayout(self._build_header())
+        self.context_header = ContextHeader()
+        self.page_title_label = self.context_header.page_title_label
+        root.addWidget(self.context_header)
 
         shell = QHBoxLayout()
         shell.setSpacing(12)
@@ -149,24 +153,6 @@ class MainWindow(QMainWindow):
         self._compose_optional_facades(library)
         self.setCentralWidget(central)
         self.navigate_to("library")
-
-    def _build_header(self):
-        header = QHBoxLayout()
-        header.setSpacing(8)
-        identity = QVBoxLayout()
-        identity.setSpacing(2)
-        title = QLabel("DJPlus")
-        title.setObjectName("appTitle")
-        subtitle = QLabel("Biblioteca musical")
-        subtitle.setObjectName("appSubtitle")
-        identity.addWidget(title)
-        identity.addWidget(subtitle)
-        header.addLayout(identity)
-        header.addStretch(1)
-        self.page_title_label = QLabel()
-        self.page_title_label.setObjectName("pageTitle")
-        header.addWidget(self.page_title_label, alignment=Qt.AlignRight | Qt.AlignVCenter)
-        return header
 
     def _build_navigation(self):
         nav = NavigationSidebar(self.SECTIONS)
