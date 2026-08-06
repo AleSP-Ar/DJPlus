@@ -101,3 +101,29 @@ QLabel[feedbackKind="error"] { color: #FF6B6B; }
 QLabel[feedbackKind="warning"] { color: #F2C14E; }
 QLabel[feedbackKind="success"] { color: #38D39F; }
 QLabel[feedbackKind="info"] { color: #98A6BE; }
+
+/* Sprint 2A: Shell rules migrated from MainWindow._apply_shell_style */
+
+QMainWindow { background-color: #0B1020; color: #E7EDF8; }
+QWidget#appShell { background-color: #0B1020; font-size: 13px; }
+
+QFrame#navigationRail, QFrame#availabilityPage {
+    background-color: #141C2E; border: 1px solid #2C3953; border-radius: 8px;
+}
+
+/* Keep PreviewPlayerBar styling local to its widget to avoid changing its design in 2A */
+
+/* Button and focus rules tuned to the token palette */
+QPushButton { min-height: 30px; padding: 4px 10px; color: #E7EDF8; background-color: #141C2E; border: 1px solid #2C3953; border-radius: 4px; }
+QPushButton:focus, QLineEdit:focus, QComboBox:focus, QSlider:focus, QListWidget:focus, QTableView:focus, QTextEdit:focus, QPlainTextEdit:focus {
+    border: 2px solid #58A6FF;
+}
+QPushButton:disabled { color: #68758D; }
+QPushButton:checked { background-color: #6C63FF; color: #FFFFFF; font-weight: 600; }
+QPushButton:hover:!disabled { background-color: #1B263D; }
+
+QLabel#appTitle { font-size: 22px; font-weight: 600; }
+QLabel#appSubtitle, QLabel#availabilityMessage { color: #98A6BE; }
+QLabel#pageTitle { font-size: 16px; font-weight: 600; }
+QLabel#availabilityTitle { font-size: 16px; font-weight: 600; }
+QStackedWidget#workspaceStack { background-color: #0B1020; }

@@ -88,33 +88,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("DJPlus")
         self.resize(1280, 800)
         self.setMinimumSize(900, 560)
-        self._apply_shell_style()
         self.create_ui()
 
-    def _apply_shell_style(self):
-        """Apply the Sprint UI 2 surface, spacing, and navigation baseline."""
-        self.setStyleSheet(
-            """
-            QMainWindow { background: #111827; color: #e5e7eb; }
-            QWidget#appShell { background: #111827; font-size: 13px; }
-            QFrame#navigationRail, QFrame#availabilityPage, QWidget#previewPlayerBar {
-                background: #1f2937; border: 1px solid #374151; border-radius: 8px;
-            }
-            QPushButton { min-height: 30px; padding: 4px 10px; border-radius: 4px; }
-            QPushButton:focus, QLineEdit:focus, QComboBox:focus, QSlider:focus, QListWidget:focus, QTableView:focus, QTextEdit:focus {
-                border: 2px solid #60a5fa;
-            }
-            QPushButton:disabled { color: #94a3b8; }
-            QPushButton:checked { background: #2563eb; color: white; font-weight: 600; }
-            QPushButton:hover:!disabled { background: #374151; }
-            QPushButton:checked:hover { background: #1d4ed8; }
-            QLabel#appTitle { font-size: 22px; font-weight: 600; }
-            QLabel#appSubtitle, QLabel#availabilityMessage { color: #9ca3af; }
-            QLabel#pageTitle { font-size: 16px; font-weight: 600; }
-            QLabel#availabilityTitle { font-size: 16px; font-weight: 600; }
-            QStackedWidget#workspaceStack { background: #111827; }
-            """
-        )
+    # _apply_shell_style removed: shell styling is provided exclusively by app/ui/styles/app.qss
 
     def create_ui(self):
         central = QWidget(self)

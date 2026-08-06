@@ -75,6 +75,15 @@ class MainWindowCompositionTests(unittest.TestCase):
             self.assertEqual(close_library.call_count, 1)
         self.assertTrue(player._closed)
 
+    def test_main_window_does_not_install_local_stylesheet(self):
+        """Ensure MainWindow relies on global QSS and does not install a local stylesheet."""
+        window, _, _ = self._injected_window()
+        try:
+            # window.styleSheet() returns the widget-local stylesheet; expect empty
+            self.assertFalse(window.styleSheet())
+        finally:
+            window.close()
+
     def test_constructor_remains_compatible_and_rejects_invalid_dependencies(self):
         with self.assertRaises(TypeError):
             MainWindow(dependencies=object())
