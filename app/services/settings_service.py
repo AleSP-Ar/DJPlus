@@ -20,6 +20,7 @@ from .ffmpeg_audio_decoder import FFmpegDecoderConfigDTO, FFmpegResolver
 
 
 CURRENT_SETTINGS_SCHEMA_VERSION = 3
+DEFAULT_ASSISTANT_MODEL = "llama3.2"
 _SENSITIVE_MARKERS = ("api_key", "apikey", "token", "secret", "password", "credential", "private_key")
 _KNOWN_EXTENSIONS = (".mp3", ".flac", ".aif", ".aiff", ".wav", ".m4a")
 _LOGGER = logging.getLogger("djplus.settings")
@@ -160,7 +161,7 @@ class FFmpegSettingsDTO:
 @dataclass(frozen=True)
 class AssistantSettingsDTO:
     provider: str = "ollama"
-    model: str = "llama3.2"
+    model: str = DEFAULT_ASSISTANT_MODEL
     timeout_ms: int = 30000
     tool_limit: int = 8
     options: tuple[tuple[str, str], ...] = ()

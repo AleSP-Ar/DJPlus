@@ -74,6 +74,18 @@ class LocalAssistantMVPTests(unittest.TestCase):
         self.assertEqual(transport.calls[0].json_body["model"], "qwen2.5")
         self.assertEqual([tool["function"]["name"] for tool in transport.calls[0].json_body["tools"]], ["library_query"])
 
+    def test_deterministic_local_mode_plans_library_query_with_no_provider(self):
+        library = _LibraryServiceDouble(count=12)
+        mvp = LocalAssistantMVP(
+            library,
+            use_provider=False,
+        )
+
+        result = mvp.ask("Buscame pistas similares")
+
+        self.assertIsNotNone(result.tool_results)
+        self.assertGreaterEqual(len(result.tool_results), 0)
+        self.assertEqual(result.provider_execution, None)
     def test_ollama_provider_maps_invalid_tool_calls_to_typed_provider_error(self):
         provider = OllamaProvider(
             MockProviderTransport(json_body={"message": {"content": "", "tool_calls": [{"function": {"name": "x", "arguments": []}}]}})
