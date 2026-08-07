@@ -208,6 +208,9 @@ class Track(Base):
     bpm_confidence = Column(Float, nullable=True)
     key_confidence = Column(Float, nullable=True)
     energy_confidence = Column(Float, nullable=True)
+    primary_genre_confidence = Column(Float, nullable=True)
+    secondary_genres_json = Column(String, nullable=True)
+    styles_json = Column(String, nullable=True)
     rating = Column(Integer, default=0)
     is_favorite = Column(Boolean, default=False, nullable=False)
 

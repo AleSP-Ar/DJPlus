@@ -20,6 +20,7 @@ MIGRATIONS = (
     ("0003_track_import_snapshots", "Add track import metadata and snapshots", "_track_import_snapshots"),
     ("0004_analysis_provenance", "Add optional local analysis provenance", "_analysis_provenance"),
     ("0005_track_metadata_history", "Add durable track metadata edit history", "_track_metadata_history"),
+    ("0006_track_classification_persistence", "Persist confirmed music classification fields", "_track_classification_persistence"),
 )
 
 
@@ -245,3 +246,15 @@ def _analysis_provenance(connection):
 def _track_metadata_history(connection):
     connection.execute(text("CREATE TABLE IF NOT EXISTS track_metadata_history (id INTEGER PRIMARY KEY, track_id INTEGER NOT NULL REFERENCES tracks(id) ON DELETE CASCADE, changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, fields_json TEXT NOT NULL, previous_json TEXT NOT NULL, new_json TEXT NOT NULL, origin VARCHAR(32) NOT NULL, status VARCHAR(16) NOT NULL)"))
     connection.execute(text("CREATE INDEX IF NOT EXISTS ix_track_metadata_history_track_changed ON track_metadata_history (track_id, changed_at)"))
+
+
+def _track_classification_persistence(connection):
+    columns = {column["name"] for column in inspect(connection).get_columns("tracks")}
+    missing_columns = {
+        "primary_genre_confidence": "FLOAT",
+        "secondary_genres_json": "TEXT",
+        "styles_json": "TEXT",
+    }
+    for name, definition in missing_columns.items():
+        if name not in columns:
+            connection.execute(text(f"ALTER TABLE tracks ADD COLUMN {name} {definition}"))
