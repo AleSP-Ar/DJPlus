@@ -17,8 +17,8 @@ class MetadataCandidateResolverTests(unittest.TestCase):
         c = [CandidateDTO(source="MusicBrainz", genre_term="prog house", style_terms=[], confidence=0.9),
              CandidateDTO(source="Discogs", genre_term="progressive_trance", style_terms=[], confidence=0.9)]
         r = self.resolver.resolve(c)
-        # conflict warning expected
-        self.assertTrue(any("Conflict between sources" in w for w in r.warnings))
+        self.assertEqual(r.conflicts, ["Conflict between sources: multiple distinct resolved genres proposed"])
+        self.assertTrue(any("Top genre difference below margin" in w for w in r.warnings))
 
     def test_ambiguous_term(self):
         c = [CandidateDTO(source="Any", genre_term="progressive", style_terms=[], confidence=0.8)]

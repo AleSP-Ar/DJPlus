@@ -34,8 +34,10 @@ class ResolutionResultDTO:
     primary_genre_label: Optional[str]
     primary_confidence: float
     evidence_count: int
+    candidate_genres: List[Tuple[str, Optional[str], float, int]]
     secondary_genres: List[Tuple[str, Optional[str], float]]
     styles: List[Tuple[str, Optional[str], float]]
+    conflicts: List[str]
     ambiguous: Dict[str, List[str]]
     unknown_terms: List[str]
     warnings: List[str]
@@ -65,7 +67,7 @@ class MetadataCandidateResolver:
 
         # handle empty input: return empty lists, no warnings
         if not candidates:
-            return ResolutionResultDTO(None, None, 0.0, 0, [], [], {}, [], [], [])
+            return ResolutionResultDTO(None, None, 0.0, 0, [], [], [], [], {}, [], [], [])
 
         # Process each candidate's genre
         for c in candidates:
@@ -114,24 +116,31 @@ class MetadataCandidateResolver:
             genre_scores[gid] = max(0.0, min(1.0, score))
 
         # add explicit conflict warning when multiple distinct resolved ids are proposed
+        conflicts: List[str] = []
         if len(genre_scores) > 1:
-            warnings.append("Conflict between sources: multiple distinct resolved genres proposed")
+            conflicts.append("Conflict between sources: multiple distinct resolved genres proposed")
 
         # determine best two
         sorted_genres = sorted(genre_scores.items(), key=lambda kv: kv[1], reverse=True)
         if not sorted_genres:
-            return ResolutionResultDTO(None, None, 0.0, 0, [], [], ambiguous_map, unknown_terms, warnings, supports_out)
+            return ResolutionResultDTO(None, None, 0.0, 0, [], [], [], [], ambiguous_map, unknown_terms, warnings, supports_out)
 
         best_genre, best_score = sorted_genres[0]
         second_score = sorted_genres[1][1] if len(sorted_genres) > 1 else 0.0
 
+        candidate_genres = [
+            (gid, supports_by_genre[gid][0].resolved_label if supports_by_genre[gid] else None, score, genre_evidence_count.get(gid, 0))
+            for gid, score in sorted_genres
+        ]
+
+        # if no positive evidence, do not select a primary genre
+        if best_score <= 0.0:
+            return ResolutionResultDTO(None, None, 0.0, 0, [], [], [], [], ambiguous_map, unknown_terms, warnings, supports_out)
+
         # if difference less than margin -> conflict (no primary)
         if (best_score - second_score) < self.margin and len(sorted_genres) > 1:
-            candidates_ordered = [gid for gid, _ in sorted_genres]
-            warnings.append(f"Top genre difference below margin {self.margin}; no primary selected. Candidates: {candidates_ordered}")
-            # return ambiguous candidates in ambiguous map under special key
-            amb = {"candidates": candidates_ordered}
-            return ResolutionResultDTO(None, None, 0.0, 0, [], [], amb, unknown_terms, warnings, supports_out)
+            warnings.append(f"Top genre difference below margin {self.margin}; no primary selected. Candidates: {[gid for gid, _ in sorted_genres]}")
+            return ResolutionResultDTO(None, None, 0.0, sum(genre_evidence_count.values()), candidate_genres, [], [], conflicts, {}, unknown_terms, warnings, supports_out)
 
         primary_confidence = float(best_score)
         primary_label = None
@@ -174,13 +183,20 @@ class MetadataCandidateResolver:
             conf = (sumwc / sumw) if sumw > 0 else 0.0
             styles_out.append((sid, style_labels.get(sid), float(conf)))
 
+        candidate_genres = [
+            (gid, supports_by_genre[gid][0].resolved_label if supports_by_genre[gid] else None, score, genre_evidence_count.get(gid, 0))
+            for gid, score in sorted_genres
+        ]
+
         result = ResolutionResultDTO(
             primary_genre_id=best_genre,
             primary_genre_label=primary_label,
             primary_confidence=primary_confidence,
             evidence_count=primary_evidence_count,
+            candidate_genres=candidate_genres,
             secondary_genres=secondary,
             styles=styles_out,
+            conflicts=conflicts,
             ambiguous=ambiguous_map,
             unknown_terms=unknown_terms,
             warnings=warnings,
