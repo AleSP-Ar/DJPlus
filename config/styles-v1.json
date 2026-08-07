@@ -1,0 +1,24 @@
+{
+  "version": "1",
+  "description": "Seed styles taxonomy",
+  "styles": {
+    "deep": { "label": "Deep", "aliases": ["deep"]},
+    "hypnotic": { "label": "Hypnotic", "aliases": ["hypnotic"]},
+    "driving": { "label": "Driving", "aliases": ["driving"]},
+    "melodic": { "label": "Melodic", "aliases": ["melodic"]},
+    "tribal": { "label": "Tribal", "aliases": ["tribal"]},
+    "organic": { "label": "Organic", "aliases": ["organic","organic-house"]},
+    "atmospheric": { "label": "Atmospheric", "aliases": ["atmospheric"]},
+    "raw": { "label": "Raw", "aliases": ["raw"]},
+    "dark": { "label": "Dark", "aliases": ["dark"]},
+    "euphoric": { "label": "Euphoric", "aliases": ["euphoric"]},
+    "percussive": { "label": "Percussive", "aliases": ["percussive"]},
+    "vocal": { "label": "Vocal", "aliases": ["vocal"]},
+    "acid": { "label": "Acid", "aliases": ["acid"]},
+    "minimal": { "label": "Minimal", "aliases": ["minimal"]},
+    "peak_time": { "label": "Peak Time", "aliases": ["peak time","peak_time"]},
+    "cinematic": { "label": "Cinematic", "aliases": ["cinematic"]},
+    "emotional": { "label": "Emotional", "aliases": ["emotional"]},
+    "rolling": { "label": "Rolling", "aliases": ["rolling"]}
+  }
+}
