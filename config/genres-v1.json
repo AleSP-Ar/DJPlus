@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "description": "Seed taxonomy with a small set of canonical genres and aliases for tests.",
+  "description": "Seed taxonomy with canonical genres, strict aliases and explicit ambiguity entries for tests.",
   "genres": {
     "progressive_house": {
       "label": "Progressive House",
@@ -25,6 +25,38 @@
     "organic_house": {
       "label": "Organic House",
       "aliases": ["organic-house", "organic house"]
+    },
+    "deep_house": {
+      "label": "Deep House",
+      "aliases": ["deep-house"]
+    },
+    "afro_house": {
+      "label": "Afro House",
+      "aliases": ["afro-house"]
+    },
+    "tech_house": {
+      "label": "Tech House",
+      "aliases": ["tech-house"]
+    },
+    "melodic_house": {
+      "label": "Melodic House",
+      "aliases": ["melodic-house"]
+    },
+    "melodic_techno": {
+      "label": "Melodic Techno",
+      "aliases": ["melodic-techno"]
+    },
+    "peak_time_techno": {
+      "label": "Peak Time Techno",
+      "aliases": ["peak-time-techno", "peak time techno"]
+    },
+    "tech_trance": {
+      "label": "Tech Trance",
+      "aliases": ["tech-trance"]
+    },
+    "uplifting_trance": {
+      "label": "Uplifting Trance",
+      "aliases": ["uplifting-trance"]
     }
   },
   "ambiguous_terms": {

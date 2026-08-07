@@ -13,6 +13,22 @@ class GenreNormalizerExtTests(unittest.TestCase):
         self.assertEqual(r["resolution_status"], "alias")
         self.assertAlmostEqual(r["confidence"], 0.9)
 
+    def test_new_taxonomy_entries_are_resolved(self):
+        n = GenreNormalizer("config/genres-v1.json")
+        for term, expected in [
+            ("Deep House", "deep_house"),
+            ("Afro House", "afro_house"),
+            ("Tech House", "tech_house"),
+            ("Melodic House", "melodic_house"),
+            ("Melodic Techno", "melodic_techno"),
+            ("Peak Time Techno", "peak_time_techno"),
+            ("Tech Trance", "tech_trance"),
+            ("Uplifting Trance", "uplifting_trance"),
+        ]:
+            result = n.normalize_term(term)
+            self.assertEqual(result["resolved_id"], expected)
+            self.assertEqual(result["resolution_status"], "exact")
+
     def test_explicit_ambiguous_term_progressive(self):
         n = GenreNormalizer("config/genres-v1.json")
         r = n.normalize_term("progressive")

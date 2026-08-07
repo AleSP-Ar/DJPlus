@@ -14,5 +14,7 @@ Reglas de validación implementadas (loader):
 - `genres` debe ser un objeto; cada entrada requiere `label` (string) y `aliases` (lista de strings).
 - `ambiguous_terms` debe mapear términos (string) a listas no vacías de `canonical_id` existentes.
 - Aliases que normalizan al mismo token entre diferentes `canonical_id` son rechazados como conflicto, salvo que el token esté declarado en `ambiguous_terms` con el conjunto exacto de candidatos.
+- Los términos amplios `electronic`, `house`, `techno` y `trance` no son géneros canónicos y no deben aparecer como `canonical_id`.
+- `music` se trata como término desconocido salvo que exista un caso real documentado por la fuente.
 
 Versión: 1

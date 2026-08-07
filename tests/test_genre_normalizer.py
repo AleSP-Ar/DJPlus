@@ -22,15 +22,34 @@ class GenreNormalizerTests(unittest.TestCase):
         r = self.normalizer.normalize_term("Progressive-House")
         self.assertEqual(r["canonical_id"], "progressive_house")
 
+    def test_new_genres_are_supported(self):
+        for term, expected in [
+            ("deep_house", "deep_house"),
+            ("afro_house", "afro_house"),
+            ("tech_house", "tech_house"),
+            ("melodic_house", "melodic_house"),
+            ("melodic_techno", "melodic_techno"),
+            ("peak_time_techno", "peak_time_techno"),
+            ("tech_trance", "tech_trance"),
+            ("uplifting_trance", "uplifting_trance"),
+        ]:
+            result = self.normalizer.normalize_term(term)
+            self.assertEqual(result["canonical_id"], expected)
+            self.assertEqual(result["status"], "exact")
+            self.assertEqual(result["confidence"], 1.0)
+
+    def test_uplifting_trance_alias(self):
+        result = self.normalizer.normalize_term("uplifting-trance")
+        self.assertEqual(result["canonical_id"], "uplifting_trance")
+        self.assertEqual(result["status"], "exact")
+
     def test_unknown_term(self):
         r = self.normalizer.normalize_term("some unknown genre")
         self.assertIsNone(r["canonical_id"])
         self.assertEqual(r["status"], "unknown")
 
     def test_ambiguous_term(self):
-        # create a local normalizer with an ambiguous alias
         normalizer = GenreNormalizer(taxonomy_path="config/genres-v1.json")
-        # 'drum and bass' maps to drum_and_bass only, to force ambiguity we query a token 'house' which isn't present
         r = normalizer.normalize_term("house")
         self.assertIn(r["status"], ("unknown", "ambiguous"))
 
