@@ -1,0 +1,33 @@
+{
+  "version": "1",
+  "description": "Seed taxonomy with a small set of canonical genres and aliases for tests.",
+  "genres": {
+    "progressive_house": {
+      "label": "Progressive House",
+      "aliases": ["prog house", "progressivehouse", "progressive house"]
+    },
+    "psy_trance": {
+      "label": "Psy Trance",
+      "aliases": ["psytrance", "psy trance", "psy-trance"]
+    },
+    "drum_and_bass": {
+      "label": "Drum and Bass",
+      "aliases": ["dnb", "drum & bass", "drum-and-bass"]
+    },
+    "progressive_trance": {
+      "label": "Progressive Trance",
+      "aliases": ["progressive trance", "prog trance"]
+    },
+    "melodic_house_and_techno": {
+      "label": "Melodic House and Techno",
+      "aliases": ["melodic h&t", "melodic house & techno", "melodic house and techno"]
+    },
+    "organic_house": {
+      "label": "Organic House",
+      "aliases": ["organic-house", "organic house"]
+    }
+  },
+  "ambiguous_terms": {
+    "progressive": ["progressive_house", "progressive_trance"]
+  }
+}
