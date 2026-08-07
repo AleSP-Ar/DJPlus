@@ -61,5 +61,27 @@
   },
   "ambiguous_terms": {
     "progressive": ["progressive_house", "progressive_trance"]
+  },
+  "genre_compatibilities": {
+    "organic_house": {
+      "progressive_house": "high",
+      "afro_house": "medium_high",
+      "progressive_trance": "medium"
+    },
+    "deep_house": {
+      "organic_house": "high"
+    },
+    "progressive_house": {
+      "melodic_house_and_techno": "high",
+      "progressive_trance": "medium_high",
+      "tech_house": "medium"
+    },
+    "melodic_house_and_techno": {
+      "progressive_trance": "medium_high"
+    },
+    "peak_time_techno": {
+      "tech_trance": "medium_high",
+      "progressive_trance": "low"
+    }
   }
 }
