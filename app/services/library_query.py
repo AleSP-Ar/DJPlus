@@ -17,6 +17,7 @@ class SearchCriteria:
 @dataclass(frozen=True)
 class FilterCriteria:
     genre: str | None = None
+    label: str | None = None
     bpm_min: float | None = None
     bpm_max: float | None = None
     key: str | None = None

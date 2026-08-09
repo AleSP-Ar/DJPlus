@@ -46,6 +46,22 @@ class SettingsServiceTests(unittest.TestCase):
         self.assertEqual(result.library.music_paths, (str(Path(self.temp.name) / "music"),))
         self.assertEqual(SettingsService(self.path).load().library.page_size, 50)
 
+    def test_library_automation_preferences_require_a_known_default_folder(self):
+        music = str(Path(self.temp.name) / "music")
+        result = self.service.update({"library": {
+            "music_paths": [music],
+            "default_music_path": music,
+            "scan_on_start": True,
+            "auto_external_metadata_enabled": True,
+            "external_metadata_confidence_threshold": 75,
+        }})
+        self.assertEqual(result.library.default_music_path, music)
+        self.assertTrue(result.library.scan_on_start)
+        self.assertTrue(result.library.auto_external_metadata_enabled)
+        self.assertEqual(result.library.external_metadata_confidence_threshold, 75)
+        with self.assertRaises(SettingsValidationError):
+            self.service.update({"library": {"default_music_path": str(Path(self.temp.name) / "other")}})
+
     def test_corrupt_json_recovers_to_defaults_with_backup_or_raises_typed_error(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text("{corrupt", encoding="utf-8")

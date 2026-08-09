@@ -7,7 +7,7 @@
       "aliases": ["prog house", "progressivehouse", "progressive house"]
     },
     "psy_trance": {
-      "label": "Psy Trance",
+      "label": "Psy-Trance",
       "aliases": ["psytrance", "psy trance", "psy-trance"]
     },
     "drum_and_bass": {
@@ -19,7 +19,7 @@
       "aliases": ["progressive trance", "prog trance"]
     },
     "melodic_house_and_techno": {
-      "label": "Melodic House and Techno",
+      "label": "Melodic House & Techno",
       "aliases": ["melodic h&t", "melodic house & techno", "melodic house and techno"]
     },
     "organic_house": {
@@ -47,7 +47,7 @@
       "aliases": ["melodic-techno"]
     },
     "peak_time_techno": {
-      "label": "Peak Time Techno",
+      "label": "Techno (Peak Time / Driving)",
       "aliases": ["peak-time-techno", "peak time techno"]
     },
     "tech_trance": {
@@ -55,7 +55,7 @@
       "aliases": ["tech-trance"]
     },
     "uplifting_trance": {
-      "label": "Uplifting Trance",
+      "label": "Trance (Main Floor)",
       "aliases": ["uplifting-trance"]
     }
   },

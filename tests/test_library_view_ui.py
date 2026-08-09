@@ -110,17 +110,19 @@ class LibraryViewUiTests(unittest.TestCase):
         self.assertEqual(self.library.calls[-1], ("search", "artist"))
 
         self.view.genre_filter.setText("house")
+        self.view.label_filter.setText("demo")
         self.view.bpm_min_filter.setValue(120)
         self.view.key_filter.setText("8A")
         self.view.rating_filter.setValue(4)
         self.view.apply_filters()
         self.assertEqual(
             self.library.calls[-1],
-            ("query", "artist", {"genre": "house", "bpm_min": 120.0, "key": "8A", "rating_min": 4}),
+            ("query", "artist", {"genre": "house", "label": "demo", "bpm_min": 120.0, "key": "8A", "rating_min": 4}),
         )
 
         self.view.clear_filters()
-        self.assertEqual(self.library.calls[-1], ("query", "artist", {}))
+        self.assertEqual(self.library.calls[-1], ("query", "", {}))
+        self.assertEqual(self.view.search.text(), "")
         self.assertEqual(self.view._active_filters, {})
 
     def test_visual_states_cover_empty_no_results_and_error(self):

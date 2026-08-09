@@ -27,6 +27,60 @@ class MetadataService:
     """Read and normalize audio metadata without persisting it."""
 
     def read(self, filepath):
+        path, audio = self._open_audio(filepath)
+        embedded = self.read_embedded(filepath, path=path, audio=audio)
+        info = getattr(audio, "info", None)
+        return TrackMetadata(
+            title=embedded.title or path.stem,
+            artist=embedded.artist or "Unknown",
+            album=embedded.album,
+            genre=embedded.genre,
+            bpm=embedded.bpm,
+            key=embedded.key,
+            duration=self._number(getattr(info, "length", None)),
+            bitrate=self._integer(getattr(info, "bitrate", None)),
+            sample_rate=self._integer(getattr(info, "sample_rate", None)),
+        )
+
+    def read_embedded(self, filepath, *, path=None, audio=None):
+        """Read embedded ID3v2 tags and fill missing text from ID3v1, without defaults."""
+        if path is None or audio is None:
+            path, audio = self._open_audio(filepath)
+        tags = audio.tags or {}
+        v1 = self._read_id3v1(path)
+        return TrackMetadata(
+            title=self._text(tags, "TIT2", "title") or v1.get("title") or "",
+            artist=self._text(tags, "TPE1", "artist") or v1.get("artist") or "",
+            album=self._text(tags, "TALB", "album") or v1.get("album"),
+            genre=self._text(tags, "TCON", "genre"),
+            bpm=self._number(self._text(tags, "TBPM", "bpm")),
+            key=self._text(tags, "TKEY", "initialkey", "key"),
+            duration=None,
+            bitrate=None,
+            sample_rate=None,
+        )
+
+    @staticmethod
+    def _read_id3v1(path):
+        try:
+            with path.open("rb") as stream:
+                stream.seek(0, 2)
+                if stream.tell() < 128:
+                    return {}
+                stream.seek(-128, 2)
+                block = stream.read(128)
+        except OSError:
+            return {}
+        if len(block) != 128 or block[:3] != b"TAG":
+            return {}
+
+        def decode(start, end):
+            return block[start:end].rstrip(b"\x00 ").decode("latin-1", errors="replace").strip() or None
+
+        return {"title": decode(3, 33), "artist": decode(33, 63), "album": decode(63, 93)}
+
+    @staticmethod
+    def _open_audio(filepath):
         path = Path(filepath)
         if not path.is_file():
             raise MetadataReadError("El archivo de audio no existe o no es accesible.")
@@ -36,20 +90,7 @@ class MetadataService:
             raise MetadataReadError("No se pudo leer la metadata del archivo.") from error
         if audio is None:
             raise MetadataReadError("El archivo no contiene audio compatible.")
-
-        tags = audio.tags or {}
-        info = getattr(audio, "info", None)
-        return TrackMetadata(
-            title=self._text(tags, "TIT2", "title") or path.stem,
-            artist=self._text(tags, "TPE1", "artist") or "Unknown",
-            album=self._text(tags, "TALB", "album"),
-            genre=self._text(tags, "TCON", "genre"),
-            bpm=self._number(self._text(tags, "TBPM", "bpm")),
-            key=self._text(tags, "TKEY", "initialkey", "key"),
-            duration=self._number(getattr(info, "length", None)),
-            bitrate=self._integer(getattr(info, "bitrate", None)),
-            sample_rate=self._integer(getattr(info, "sample_rate", None)),
-        )
+        return path, audio
 
     def _text(self, tags, *keys):
         for key in keys:

@@ -28,6 +28,14 @@ class MockProvider:
 
 
 class MetadataCandidateProposalTests(unittest.TestCase):
+
+    def test_uses_a_broad_fallback_only_when_no_beatport_visible_genre_resolves(self):
+        resolver = MetadataCandidateResolver(taxonomy_path="config/genres-v1.json")
+        proposal = MetadataCandidateProposalService(resolver).create_proposal(
+            TrackMetadataDTO(1, "Track", "Artist", None, None, 0, None, None, 0),
+            [MockProvider((CandidateDTO("test", "Electronic", [], .80),))],
+        )
+        self.assertEqual((proposal.proposed_primary_genre_id, proposal.proposed_primary_genre_label, proposal.proposed_primary_confidence), ("edm", "EDM", .80))
     def setUp(self):
         resolver = MetadataCandidateResolver(taxonomy_path="config/genres-v1.json")
         self.service = MetadataCandidateProposalService(resolver)

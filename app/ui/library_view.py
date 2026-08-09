@@ -113,6 +113,9 @@ class LibraryView(QWidget):
         self.genre_filter = QLineEdit()
         self.genre_filter.setPlaceholderText("Género")
         self.genre_filter.setAccessibleName("Filtrar por género")
+        self.label_filter = QLineEdit()
+        self.label_filter.setPlaceholderText("Sello")
+        self.label_filter.setAccessibleName("Filtrar por sello")
         self.bpm_min_filter = QDoubleSpinBox()
         self.bpm_min_filter.setRange(0, 400)
         self.bpm_min_filter.setDecimals(1)
@@ -132,6 +135,7 @@ class LibraryView(QWidget):
 
         for widget in (
             self.genre_filter,
+            self.label_filter,
             self.bpm_min_filter,
             self.bpm_max_filter,
             self.key_filter,
@@ -272,14 +276,17 @@ class LibraryView(QWidget):
         self._present_result(tracks, has_more, query_active=bool(self.search.text()) or bool(filters))
 
     def clear_filters(self):
-        for widget in (self.genre_filter, self.key_filter):
+        self.search.blockSignals(True)
+        self.search.clear()
+        self.search.blockSignals(False)
+        for widget in (self.genre_filter, self.label_filter, self.key_filter):
             widget.clear()
         for widget in (self.bpm_min_filter, self.bpm_max_filter, self.rating_filter):
             widget.setValue(0)
         self._active_filters = {}
         self._show_loading("Limpiando filtros", "Restableciendo los resultados de biblioteca…")
         try:
-            tracks, has_more = self.library_service.query(self.search.text())
+            tracks, has_more = self.library_service.query("")
         except Exception as error:
             self._show_error(error)
             return
@@ -288,6 +295,7 @@ class LibraryView(QWidget):
     def _collect_filters(self):
         values = {
             "genre": self.genre_filter.text().strip() or None,
+            "label": self.label_filter.text().strip() or None,
             "bpm_min": self.bpm_min_filter.value() or None,
             "bpm_max": self.bpm_max_filter.value() or None,
             "key": self.key_filter.text().strip() or None,

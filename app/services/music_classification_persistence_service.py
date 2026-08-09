@@ -55,8 +55,8 @@ class MusicClassificationPersistenceService:
 
         selection = selection or ClassificationSelectionDTO()
         values: dict[str, Any] = {}
-        if selection.genre:
-            values["genre"] = proposal.current_metadata.genre
+        if selection.genre and proposal.proposed_primary_genre_label:
+            values["genre"] = proposal.proposed_primary_genre_label
             values["primary_genre_confidence"] = self._confidence_value(proposal.proposed_primary_confidence)
         if selection.secondary_genres:
             values["secondary_genres_json"] = self._serialize_secondary_genres(proposal.proposed_secondary_genres)

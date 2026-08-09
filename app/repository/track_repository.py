@@ -116,8 +116,12 @@ class TrackRepository:
         if search.date_added is not None:
             query = query.filter(Track.created_at == search.date_added)
 
-        if search.genre or filters.genre:
-            raise ValueError("El filtro genre requiere una migración de esquema aprobada.")
+        if search.genre:
+            query = query.filter(Track.genre.ilike(f"%{search.genre}%"))
+        if filters.genre:
+            query = query.filter(Track.genre.ilike(f"%{filters.genre}%"))
+        if filters.label:
+            query = query.filter(Track.label.ilike(f"%{filters.label}%"))
 
         if filters.bpm_min is not None:
             query = query.filter(Track.bpm >= filters.bpm_min)
@@ -151,10 +155,7 @@ class TrackRepository:
             "duration": Track.duration,
             "date_added": Track.created_at,
         }
-        if sort.column == "genre":
-            raise ValueError("El orden genre requiere una migración de esquema aprobada.")
-
-        order_column = columns[sort.column]
+        order_column = Track.genre if sort.column == "genre" else columns[sort.column]
         order = order_column.desc() if sort.direction == "desc" else order_column.asc()
         query = query.order_by(order, Track.id.asc())
         if limit is not None:

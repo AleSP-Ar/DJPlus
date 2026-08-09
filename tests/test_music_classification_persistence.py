@@ -87,7 +87,7 @@ class MusicClassificationPersistenceServiceTests(unittest.TestCase):
 
         self.assertTrue(result["applied"])
         persisted = service.read_classification(track.id)
-        self.assertEqual(persisted["primary_genre"], "house")
+        self.assertEqual(persisted["primary_genre"], "Progressive House")
         self.assertEqual(persisted["primary_genre_confidence"], 0.91)
         self.assertEqual(persisted["secondary_genres"], [["deep_house", "Deep House", 0.8]])
         self.assertEqual(persisted["styles"], [["deep", "Deep", 0.75]])
@@ -113,7 +113,7 @@ class MusicClassificationPersistenceServiceTests(unittest.TestCase):
         service.apply_confirmed_proposal(proposal, confirmation=True, selection=ClassificationSelectionDTO(genre=True, secondary_genres=False, styles=False))
         persisted = service.read_classification(track.id)
 
-        self.assertEqual(persisted["primary_genre"], "house")
+        self.assertEqual(persisted["primary_genre"], "Progressive House")
         self.assertEqual(persisted["secondary_genres"], None)
         self.assertEqual(persisted["styles"], None)
 

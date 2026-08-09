@@ -256,7 +256,7 @@ class DiscogsMetadataProvider(MetadataCandidateProviderProtocol):
         genre_candidates = [candidate for candidate in candidates if candidate.genre_term is not None]
         style_candidates = [candidate for candidate in candidates if candidate.genre_term is None and candidate.style_terms]
 
-        if not genre_candidates and not style_candidates:
+        if not genre_candidates and not style_candidates and not label:
             return None
 
         genre_term = genre_candidates[0].genre_term if genre_candidates else None

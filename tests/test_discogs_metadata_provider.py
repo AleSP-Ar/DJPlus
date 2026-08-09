@@ -112,6 +112,13 @@ class DiscogsMetadataProviderTests(unittest.TestCase):
         self.assertIn("artist=1979", transport.calls[0].url)
         self.assertIn("track=Directions", transport.calls[0].url)
 
+    def test_fetch_candidates_keeps_a_label_when_discogs_has_no_usable_genre(self):
+        transport = MockProviderTransport(json_body={
+            "results": [{"id": 1, "title": "Artist Name - Song Title", "label": ["Lost & Found"], "genre": ["Electronic"], "score": 95}]
+        })
+        candidates = tuple(DiscogsMetadataProvider(transport=transport).fetch_candidates(self.metadata))
+        self.assertEqual((candidates[0].genre_term, candidates[0].label, candidates[0].confidence), (None, "Lost & Found", .95))
+
     def test_fetch_candidates_deduplicates_and_orders_deterministically(self):
         json_body = {
             "results": [

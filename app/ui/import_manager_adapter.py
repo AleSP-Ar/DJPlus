@@ -18,6 +18,7 @@ class ImportManagerAdapter(QObject):
     history_loaded = Signal(list)
     job_detail_loaded = Signal(object)
     recovery_completed = Signal(list)
+    import_completed = Signal()
 
     def __init__(self, worker=None, facade=None, parent=None):
         super().__init__(parent)
@@ -73,3 +74,5 @@ class ImportManagerAdapter(QObject):
             self.error_reported.emit(event.filepath or "Importación", event.error_message)
         if event.event_type in {"completed", "cancelled"}:
             self.running_changed.emit(False)
+        if event.event_type == "completed":
+            self.import_completed.emit()

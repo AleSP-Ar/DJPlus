@@ -41,6 +41,7 @@ class MetadataProposalDTO:
     warnings: Tuple[str, ...]
     selectable_fields: Tuple[str, ...] = ("genre", "secondary_genres", "styles", "label")
     proposed_label: Optional[str] = None
+    proposed_label_confidence: float = 0.0
 
 
 class MetadataCandidateProposalService:
@@ -79,6 +80,8 @@ class MetadataCandidateProposalService:
 
         result = self._resolver.resolve(candidates)
 
+        fallback = self._fallback_primary_genre(candidates) if result.primary_genre_label is None else None
+
         ambiguous_terms = tuple(
             (term, tuple(values)) for term, values in sorted(result.ambiguous.items())
         )
@@ -94,10 +97,10 @@ class MetadataCandidateProposalService:
 
         return MetadataProposalDTO(
             current_metadata=current_metadata,
-            proposed_primary_genre_id=result.primary_genre_id,
-            proposed_primary_genre_label=result.primary_genre_label,
-            proposed_primary_confidence=result.primary_confidence,
-            proposed_evidence_count=getattr(result, "evidence_count", 0),
+            proposed_primary_genre_id=result.primary_genre_id or (fallback[0] if fallback else None),
+            proposed_primary_genre_label=result.primary_genre_label or (fallback[1] if fallback else None),
+            proposed_primary_confidence=result.primary_confidence or (fallback[2] if fallback else 0.0),
+            proposed_evidence_count=getattr(result, "evidence_count", 0) or (fallback[3] if fallback else 0),
             candidate_genres=candidate_genres,
             proposed_secondary_genres=secondary_genres,
             proposed_styles=proposed_styles,
@@ -106,4 +109,27 @@ class MetadataCandidateProposalService:
             unknown_terms=unknown_terms,
             warnings=tuple(warnings + result.warnings),
             proposed_label=labels[0][1] if labels else None,
+            proposed_label_confidence=labels[0][0] if labels else 0.0,
         )
+
+    @staticmethod
+    def _fallback_primary_genre(candidates):
+        """Use a broad DJ category only when no Beatport-visible genre resolved."""
+        terms = []
+        for candidate in candidates:
+            if candidate.genre_term:
+                terms.append(str(candidate.genre_term).strip().casefold())
+        fallback_terms = {
+            "house": ("house", "House"),
+            "trance": ("trance", "Trance"),
+            "techno": ("techno", "Techno"),
+            "electronic": ("edm", "EDM"),
+            "edm": ("edm", "EDM"),
+            "electronic dance music": ("edm", "EDM"),
+        }
+        broad_terms = [fallback_terms[term] for term in terms if term in fallback_terms]
+        if terms and len(broad_terms) == len(terms):
+            genre_id, label = broad_terms[0]
+            confidence = max((float(candidate.confidence) for candidate in candidates), default=0.0)
+            return genre_id, label, confidence, len(terms)
+        return None

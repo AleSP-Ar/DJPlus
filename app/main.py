@@ -1,35 +1,45 @@
 import sys
 
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
 try:
-    from .database import init_database
+    from .database import create_backup_restore_service, init_database
     from .services.app_logging_service import AppLoggingService
     from .services.history_service import HistoryService
     from .services.library_service import LibraryService
     from .services.global_ranking_factory import create_global_recommendation_facade
     from .services.settings_service import SettingsService
+    from .services.automatic_metadata_service import AutomaticMetadataService
+    from .services.automatic_analysis_service import AutomaticAnalysisService
+    from .services.startup_automation import StartupAutomationService
     from .services.preview_player import HistoryPlaybackPortAdapter, create_preview_player_service
     from .ui.intelligence_panel import LocalIntelligencePanel
     from .ui.library_view import LibraryView
+    from .ui.import_manager_panel import ImportManagerPanel
     from .ui.main_window import MainWindow, MainWindowDependencies
     from .ui.styles import apply_global_stylesheet
 except ImportError:  # pragma: no cover - fallback for direct execution
-    from app.database import init_database
+    from app.database import create_backup_restore_service, init_database
     from app.services.app_logging_service import AppLoggingService
     from app.services.history_service import HistoryService
     from app.services.library_service import LibraryService
     from app.services.global_ranking_factory import create_global_recommendation_facade
     from app.services.settings_service import SettingsService
+    from app.services.automatic_metadata_service import AutomaticMetadataService
+    from app.services.automatic_analysis_service import AutomaticAnalysisService
+    from app.services.startup_automation import StartupAutomationService
     from app.services.preview_player import HistoryPlaybackPortAdapter, create_preview_player_service
     from app.ui.intelligence_panel import LocalIntelligencePanel
     from app.ui.library_view import LibraryView
+    from app.ui.import_manager_panel import ImportManagerPanel
     from app.ui.main_window import MainWindow, MainWindowDependencies
     from app.ui.styles import apply_global_stylesheet
 
 def main():
     settings = SettingsService()
-    configuration = settings.load()
+    settings.load()
+    configuration = settings.enable_automatic_workflows()
     logging_service = AppLoggingService(configuration.logging)
     logging_service.install_exception_hooks()
     logger = logging_service.get_logger("ui")
@@ -43,6 +53,7 @@ def main():
         library_service = LibraryService()
         history_service = HistoryService()
         library_view = LibraryView(library_service, history_service, settings)
+        import_panel = ImportManagerPanel(settings_service=settings)
         recommendation_facade = create_global_recommendation_facade(library_service, history_service)
         intelligence_panel = LocalIntelligencePanel(recommendation_facade, library_view=library_view, settings_service=settings)
         preview_player = create_preview_player_service(
@@ -53,10 +64,20 @@ def main():
             preview_player_service=preview_player,
             dependencies=MainWindowDependencies(
                 library_view=library_view,
+                import_panel=import_panel,
                 assistant_panel=intelligence_panel,
             ),
         )
         window.show()
+        automation = StartupAutomationService(
+            settings, create_backup_restore_service(settings, logging_service), import_panel.adapter,
+            automatic_metadata_service=AutomaticMetadataService(settings),
+            automatic_analysis_service=AutomaticAnalysisService(settings),
+            logger=logging_service.get_logger("automation"),
+        )
+        # The coordinator must live as long as the window so it can react when an import finishes.
+        window.startup_automation = automation
+        QTimer.singleShot(0, automation.start)
         return app.exec()
     finally:
         if preview_player is not None:

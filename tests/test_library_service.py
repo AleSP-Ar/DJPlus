@@ -110,6 +110,10 @@ class EngineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             FilterEngine().build(bpm_min=125, bpm_max=120)
 
+    def test_filter_engine_preserves_genre_and_label(self):
+        criteria = FilterEngine().build(genre="Progressive House", label="Lost & Found")
+        self.assertEqual((criteria.genre, criteria.label), ("Progressive House", "Lost & Found"))
+
 
 if __name__ == "__main__":
     unittest.main()

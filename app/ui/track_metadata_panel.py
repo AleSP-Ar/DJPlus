@@ -41,14 +41,16 @@ class TrackMetadataPanel(QWidget):
     external_proposal_failed = Signal(str)
     metadata_changed = Signal()
 
-    def __init__(self, facade, parent=None, proposal_service=None, persistence_service=None):
+    def __init__(self, facade, parent=None, proposal_service=None, persistence_service=None, native_metadata_service=None):
         super().__init__(parent)
         self.facade, self.preview_result, self.proposal = facade, None, None
         self._proposal_service = proposal_service
         self._persistence_service = persistence_service
+        self._native_metadata_service = native_metadata_service
         self._proposal_thread = None
         self._proposal_worker = None
         self._proposal_cancelled = False
+        self._native_metadata_used = False
         self._manual_metadata_baseline = {}
         self._build_ui()
 
@@ -148,8 +150,10 @@ class TrackMetadataPanel(QWidget):
         try:
             track_id = self._track_id_from_selection()
             track_metadata = self._build_track_metadata(track_id)
+            track_metadata = self._enrich_with_embedded_metadata(track_id, track_metadata)
             service = self._proposal_service or self._default_proposal_service()
-            self.proposal_output.setPlainText("Buscando metadata externa…")
+            message = "Metadata nativa leída; buscando coincidencias externas…" if self._native_metadata_used else "Buscando metadata externa…"
+            self.proposal_output.setPlainText(message)
             self._start_proposal_worker(service, track_metadata)
         except Exception as error:
             self.proposal = None
@@ -335,6 +339,38 @@ class TrackMetadataPanel(QWidget):
             key=getattr(track, "key", None),
             energy=getattr(track, "energy", 0) or 0,
         )
+
+    def _enrich_with_embedded_metadata(self, track_id, current_metadata):
+        self._native_metadata_used = False
+        track = self._track_from_library(track_id)
+        filepath = getattr(track, "filepath", None)
+        if not filepath:
+            return current_metadata
+        from app.services.metadata_service import MetadataReadError, MetadataService
+        service = self._native_metadata_service or MetadataService()
+        try:
+            embedded = service.read_embedded(filepath)
+        except MetadataReadError:
+            return current_metadata
+        values = {
+            "title": embedded.title or current_metadata.title,
+            "artist": embedded.artist or current_metadata.artist,
+            "album": embedded.album or current_metadata.album,
+            "genre": embedded.genre or current_metadata.genre,
+            "bpm": embedded.bpm or current_metadata.bpm,
+            "key": embedded.key or current_metadata.key,
+        }
+        self._native_metadata_used = any((embedded.title, embedded.artist, embedded.album, embedded.genre, embedded.bpm, embedded.key))
+        self._fill_empty_native_fields(values)
+        return TrackMetadataDTO(track_id, values["title"], values["artist"], values["album"], values["genre"], current_metadata.rating, values["bpm"], values["key"], current_metadata.energy)
+
+    def _fill_empty_native_fields(self, values):
+        for field in ("title", "artist", "album", "genre", "key"):
+            control = getattr(self, field)
+            if not control.text().strip() and values[field]:
+                control.setText(str(values[field]))
+        if self.bpm.value() == 0 and values["bpm"]:
+            self.bpm.setValue(float(values["bpm"]))
 
     def _track_from_library(self, track_id):
         if self.facade is None:

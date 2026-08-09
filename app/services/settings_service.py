@@ -96,7 +96,10 @@ class GeneralSettingsDTO:
 @dataclass(frozen=True)
 class LibrarySettingsDTO:
     music_paths: tuple[str, ...] = ()
-    scan_on_start: bool = False
+    default_music_path: str | None = None
+    scan_on_start: bool = True
+    auto_external_metadata_enabled: bool = True
+    external_metadata_confidence_threshold: int = 75
     supported_formats: tuple[str, ...] = _KNOWN_EXTENSIONS
     page_size: int = 100
     result_limit: int = 1000
@@ -110,8 +113,16 @@ class LibrarySettingsDTO:
         if len(normalized) != len(set(item.casefold() for item in normalized)):
             raise SettingsValidationError("music_paths no puede contener rutas duplicadas.")
         object.__setattr__(self, "music_paths", normalized)
+        if self.default_music_path is not None:
+            default_path = _normalize_path(self.default_music_path, "Carpeta musical predeterminada")
+            if default_path.casefold() not in {item.casefold() for item in normalized}:
+                raise SettingsValidationError("default_music_path debe pertenecer a music_paths.")
+            object.__setattr__(self, "default_music_path", default_path)
         if not isinstance(self.scan_on_start, bool):
             raise SettingsValidationError("scan_on_start debe ser booleano.")
+        if not isinstance(self.auto_external_metadata_enabled, bool):
+            raise SettingsValidationError("auto_external_metadata_enabled debe ser booleano.")
+        _positive_int(self.external_metadata_confidence_threshold, "external_metadata_confidence_threshold", 1, 100)
         if not isinstance(self.supported_formats, tuple) or not self.supported_formats:
             raise SettingsValidationError("supported_formats debe tener extensiones.")
         formats = tuple(item.casefold() for item in self.supported_formats)
@@ -130,7 +141,7 @@ class AnalysisSettingsDTO:
     max_concurrency: int = 1
     block_frames: int = 1024
     timeout_seconds: int = 30
-    auto_analysis_enabled: bool = False
+    auto_analysis_enabled: bool = True
     format_priority: tuple[str, ...] = OFFICIAL_AUDIO_FORMAT_ORDER
 
     def __post_init__(self):
@@ -228,7 +239,7 @@ class BackupSettingsDTO:
     retention: int = 7
     max_age_days: int | None = None
     retain_pre_action: bool = True
-    auto_backup_enabled: bool = False
+    auto_backup_enabled: bool = True
     verify_checksum: bool = True
 
     def __post_init__(self):
@@ -344,6 +355,14 @@ class SettingsService:
         with self._lock:
             merged = self._merge(self._to_mapping(self.get()), values)
             return self.save(self.validate(merged))
+
+    def enable_automatic_workflows(self):
+        """Keep the local maintenance workflow enabled without exposing UI toggles."""
+        return self.update({
+            "library": {"scan_on_start": True, "auto_external_metadata_enabled": True},
+            "analysis": {"auto_analysis_enabled": True},
+            "backup": {"auto_backup_enabled": True},
+        })
 
     def validate(self, config):
         if isinstance(config, AppSettingsDTO):
