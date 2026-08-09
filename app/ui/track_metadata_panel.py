@@ -1,7 +1,9 @@
 """Confirmed metadata edit surface; no audio-file mutation."""
 from datetime import datetime, timezone
 
-from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtCore import QObject, QThread, QUrl, Signal, Slot
+from PySide6.QtGui import QDesktopServices
+from urllib.parse import urlencode
 from PySide6.QtWidgets import QCheckBox, QDoubleSpinBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSpinBox, QTextEdit, QVBoxLayout, QWidget
 
 from app.services.metadata_candidate_proposal import MetadataProposalDTO
@@ -85,7 +87,7 @@ class TrackMetadataPanel(QWidget):
         self.output = QTextEdit(); self.output.setReadOnly(True); self.output.setPlaceholderText("La vista previa y los errores aparecerán aquí."); self.output.setMinimumHeight(150); result.layout().addWidget(self.output); layout.addWidget(result)
 
         proposal_section = self._section("6 · Metadata externa")
-        proposal_controls = QHBoxLayout(); self.external_button = QPushButton("Buscar metadata externa"); self.external_button.setObjectName("metadataPrimary"); self.external_button.setAccessibleName("Buscar metadata externa"); self.external_button.clicked.connect(self.search_external_metadata); proposal_controls.addWidget(self.external_button); proposal_controls.addStretch(1); proposal_section.layout().addLayout(proposal_controls)
+        proposal_controls = QHBoxLayout(); self.external_button = QPushButton("Buscar metadata externa"); self.external_button.setObjectName("metadataPrimary"); self.external_button.setAccessibleName("Buscar metadata externa"); self.external_button.clicked.connect(self.search_external_metadata); self.beatport_button = QPushButton("Buscar en Beatport"); self.beatport_button.setAccessibleName("Buscar la pista actual en Beatport"); self.beatport_button.setToolTip("Abre Beatport para verificar la metadata de esta pista."); self.beatport_button.clicked.connect(self.open_beatport_search); proposal_controls.addWidget(self.external_button); proposal_controls.addWidget(self.beatport_button); proposal_controls.addStretch(1); proposal_section.layout().addLayout(proposal_controls)
         self.proposal_output = QTextEdit(); self.proposal_output.setReadOnly(True); self.proposal_output.setMinimumHeight(120); self.proposal_output.setPlaceholderText("La propuesta externa aparecerá aquí."); self.proposal_output.setAccessibleName("Resultado de metadata externa"); proposal_section.layout().addWidget(self.proposal_output)
 
         fields_box = QHBoxLayout(); self.genre_checkbox = QCheckBox("Género"); self.genre_checkbox.setAccessibleName("Aplicar género"); self.genre_checkbox.setChecked(True); self.secondary_genres_checkbox = QCheckBox("Géneros secundarios"); self.secondary_genres_checkbox.setAccessibleName("Aplicar géneros secundarios"); self.secondary_genres_checkbox.setChecked(True); self.styles_checkbox = QCheckBox("Estilos"); self.styles_checkbox.setAccessibleName("Aplicar estilos"); self.styles_checkbox.setChecked(True); self.label_checkbox = QCheckBox("Sello"); self.label_checkbox.setAccessibleName("Aplicar sello"); self.label_checkbox.setChecked(True); fields_box.addWidget(self.genre_checkbox); fields_box.addWidget(self.secondary_genres_checkbox); fields_box.addWidget(self.styles_checkbox); fields_box.addWidget(self.label_checkbox); proposal_section.layout().addLayout(fields_box)
@@ -158,6 +160,17 @@ class TrackMetadataPanel(QWidget):
         except Exception as error:
             self.proposal = None
             self._render_external_error(str(error))
+
+    def beatport_search_url(self):
+        query = " ".join(value.strip() for value in (self.artist.text(), self.title.text()) if value.strip())
+        return QUrl(f"https://www.beatport.com/search?{urlencode({'q': query})}") if query else QUrl()
+
+    def open_beatport_search(self):
+        url = self.beatport_search_url()
+        if not url.isValid() or not url.query():
+            self.proposal_output.setPlainText("Seleccioná una pista o completá artista y título para buscar en Beatport.")
+            return
+        QDesktopServices.openUrl(url)
 
     def apply_external_metadata(self):
         if self.proposal is None:

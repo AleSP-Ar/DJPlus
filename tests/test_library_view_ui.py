@@ -146,18 +146,16 @@ class LibraryViewUiTests(unittest.TestCase):
         self.assertEqual(self.view.model.rowCount(), 2)
         self.assertIn("2 de 2", self.view.counter.text())
 
-    def test_library_shows_classification_columns_and_updates_rating(self):
+    def test_library_shows_genre_and_label_without_style_columns_and_updates_rating(self):
         headers = self.view.model.HEADERS
         self.assertIn("Género", headers)
-        self.assertIn("Géneros secundarios", headers)
-        self.assertIn("Estilos", headers)
+        self.assertNotIn("Géneros secundarios", headers)
+        self.assertNotIn("Estilos", headers)
         self.assertIn("Sello", headers)
         self.assertEqual(self.view.model.data(self.view.model.index(0, 3), Qt.DisplayRole), "Demo Label")
         self.assertEqual(self.view.model.data(self.view.model.index(0, 4), Qt.DisplayRole), "House")
-        self.assertEqual(self.view.model.data(self.view.model.index(0, 5), Qt.DisplayRole), "Deep House")
-        self.assertEqual(self.view.model.data(self.view.model.index(0, 6), Qt.DisplayRole), "Deep")
 
-        rating_index = self.view.model.index(0, 11)
+        rating_index = self.view.model.index(0, 9)
         self.view.show()
         self.application.processEvents()
         self.view.table.scrollTo(rating_index)

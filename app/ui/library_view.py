@@ -30,7 +30,7 @@ class LibraryView(QWidget):
 
     preview_track_requested = Signal(object)
     track_selected = Signal(object)
-    COLUMNS = ("artist", "title", "album", "label", None, None, None, "bpm", "key", None, "duration", "rating")
+    COLUMNS = ("artist", "title", "album", "label", "genre", "bpm", "key", None, "duration", "rating")
 
     def __init__(self, library_service=None, history_service=None, settings_service=None):
         super().__init__()
@@ -166,7 +166,7 @@ class LibraryView(QWidget):
         header.setSectionsClickable(True)
         header.setSectionsMovable(True)
         header.setSectionResizeMode(QHeaderView.Interactive)
-        for section, width in enumerate((170, 180, 150, 130, 130, 180, 150, 80, 70, 80, 90, 130)):
+        for section, width in enumerate((170, 180, 150, 130, 150, 80, 100, 80, 90, 130)):
             header.resizeSection(section, width)
         header.sectionClicked.connect(self.sort_tracks)
 
@@ -328,13 +328,13 @@ class LibraryView(QWidget):
             self.info_label.setText("No se pudo actualizar el rating")
             return
         track.rating = getattr(updated, "rating", rating)
-        index = self.model.index(row, 11)
+        index = self.model.index(row, 9)
         self.model.dataChanged.emit(index, index, [Qt.DisplayRole])
 
     def eventFilter(self, watched, event):
         if watched is self.table.viewport() and event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
             index = self.table.indexAt(event.position().toPoint())
-            if index.isValid() and index.column() == 11:
+            if index.isValid() and index.column() == 9:
                 bounds = self.table.visualRect(index)
                 stars_width = self.table.fontMetrics().horizontalAdvance("★★★★★")
                 stars_left = bounds.center().x() - stars_width / 2

@@ -165,6 +165,7 @@ class TrackMetadataPanelTests(unittest.TestCase):
         panel = TrackMetadataPanel(_ProxyFacade())
 
         self.assertEqual(panel.external_button.accessibleName(), "Buscar metadata externa")
+        self.assertEqual(panel.beatport_button.accessibleName(), "Buscar la pista actual en Beatport")
         self.assertEqual(panel.proposal_output.accessibleName(), "Resultado de metadata externa")
         self.assertEqual(panel.genre_checkbox.accessibleName(), "Aplicar género")
         self.assertEqual(panel.secondary_genres_checkbox.accessibleName(), "Aplicar géneros secundarios")
@@ -172,6 +173,19 @@ class TrackMetadataPanelTests(unittest.TestCase):
         self.assertEqual(panel.apply_external_button.accessibleName(), "Aplicar campos de metadata seleccionados")
         self.assertEqual(panel.cancel_external_button.accessibleName(), "Cancelar búsqueda de metadata externa")
         self.assertEqual(panel.undo_external_button.accessibleName(), "Deshacer último cambio de metadata externa")
+        panel.close()
+
+    def test_beatport_search_uses_the_selected_artist_and_title_without_scraping(self):
+        panel = TrackMetadataPanel(_ProxyFacade())
+        panel.set_selected_track(SimpleNamespace(
+            id=7, title="Cola (ARTBAT Remix)", artist="CamelPhat", album=None, label=None,
+            genre=None, bpm=None, key=None, energy=0,
+        ))
+
+        self.assertEqual(
+            panel.beatport_search_url().toString(),
+            "https://www.beatport.com/search?q=CamelPhat+Cola+%28ARTBAT+Remix%29",
+        )
         panel.close()
 
     def test_selected_library_track_prefills_the_metadata_review(self):

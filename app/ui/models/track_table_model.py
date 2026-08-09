@@ -6,8 +6,7 @@ from app.services.key_notation import format_key
 
 class TrackTableModel(QAbstractTableModel):
     HEADERS = [
-        "Artista", "Título", "Álbum", "Género", "Géneros secundarios", "Estilos",
-        "BPM", "Key", "Energía", "Duración", "Rating",
+        "Artista", "Título", "Álbum", "Género", "BPM", "Key", "Energía", "Duración", "Rating",
     ]
 
     HEADERS = HEADERS[:3] + ["Sello"] + HEADERS[3:]
@@ -33,15 +32,13 @@ class TrackTableModel(QAbstractTableModel):
     def data(self, index, role):
         if not index.isValid():
             return None
-        if role == Qt.TextAlignmentRole and index.column() == 11:
+        if role == Qt.TextAlignmentRole and index.column() == 9:
             return Qt.AlignCenter
         if role != Qt.DisplayRole:
             return None
         track = self._tracks[index.row()]
         values = [
             track.artist or "", track.title or "", track.album or "", getattr(track, "label", None) or "", track.genre or "",
-            self.format_classification(getattr(track, "secondary_genres_json", None)),
-            self.format_classification(getattr(track, "styles_json", None)),
             track.bpm or "", format_key(track.key, self._key_notation), getattr(track, "energy", None) or "",
             self.format_duration(track.duration), self.format_rating(track.rating),
         ]

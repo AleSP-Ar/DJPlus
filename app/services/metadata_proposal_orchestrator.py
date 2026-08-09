@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .discogs_metadata_provider import DiscogsMetadataProvider
+from .beatport_metadata_provider import BeatportMetadataProvider
 from .metadata_candidate_proposal import MetadataCandidateProposalService, MetadataProposalDTO
 from .metadata_candidate_resolver import MetadataCandidateResolver
 from .musicbrainz_metadata_provider import MusicBrainzMetadataProvider
@@ -15,6 +16,7 @@ class CombinedMetadataProposalService:
         resolver: MetadataCandidateResolver | None = None,
         musicbrainz_provider: MusicBrainzMetadataProvider | None = None,
         discogs_provider: DiscogsMetadataProvider | None = None,
+        beatport_provider: BeatportMetadataProvider | None = None,
     ):
         self._resolver = resolver or MetadataCandidateResolver(
             taxonomy_path="config/genres-v1.json",
@@ -26,12 +28,13 @@ class CombinedMetadataProposalService:
         self._proposal_service = MetadataCandidateProposalService(self._resolver)
         self._musicbrainz_provider = musicbrainz_provider or MusicBrainzMetadataProvider()
         self._discogs_provider = discogs_provider or DiscogsMetadataProvider()
+        self._beatport_provider = beatport_provider or BeatportMetadataProvider()
 
     def create_metadata_proposal(self, track_metadata: TrackMetadataDTO) -> MetadataProposalDTO:
         if not isinstance(track_metadata, TrackMetadataDTO):
             raise TypeError("track_metadata must be TrackMetadataDTO")
 
-        providers = (self._musicbrainz_provider, self._discogs_provider)
+        providers = (self._beatport_provider, self._musicbrainz_provider, self._discogs_provider)
         return self._proposal_service.create_proposal(track_metadata, providers)
 
 
@@ -40,10 +43,12 @@ def create_metadata_proposal(
     resolver: MetadataCandidateResolver | None = None,
     musicbrainz_provider: MusicBrainzMetadataProvider | None = None,
     discogs_provider: DiscogsMetadataProvider | None = None,
+    beatport_provider: BeatportMetadataProvider | None = None,
 ) -> MetadataProposalDTO:
     service = CombinedMetadataProposalService(
         resolver=resolver,
         musicbrainz_provider=musicbrainz_provider,
         discogs_provider=discogs_provider,
+        beatport_provider=beatport_provider,
     )
     return service.create_metadata_proposal(track_metadata)
