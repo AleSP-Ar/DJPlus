@@ -21,6 +21,7 @@ MIGRATIONS = (
     ("0004_analysis_provenance", "Add optional local analysis provenance", "_analysis_provenance"),
     ("0005_track_metadata_history", "Add durable track metadata edit history", "_track_metadata_history"),
     ("0006_track_classification_persistence", "Persist confirmed music classification fields", "_track_classification_persistence"),
+    ("0007_track_label", "Add optional record label metadata", "_track_label"),
 )
 
 
@@ -258,3 +259,9 @@ def _track_classification_persistence(connection):
     for name, definition in missing_columns.items():
         if name not in columns:
             connection.execute(text(f"ALTER TABLE tracks ADD COLUMN {name} {definition}"))
+
+
+def _track_label(connection):
+    columns = {column["name"] for column in inspect(connection).get_columns("tracks")}
+    if "label" not in columns:
+        connection.execute(text("ALTER TABLE tracks ADD COLUMN label TEXT"))

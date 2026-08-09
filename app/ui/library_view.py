@@ -1,6 +1,7 @@
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
+    QComboBox,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -28,14 +29,17 @@ class LibraryView(QWidget):
     """Library workspace that keeps the existing service and pagination contract."""
 
     preview_track_requested = Signal(object)
-    COLUMNS = ("artist", "title", "album", "bpm", "key", "duration", "rating")
+    track_selected = Signal(object)
+    COLUMNS = ("artist", "title", "album", "label", None, None, None, "bpm", "key", None, "duration", "rating")
 
-    def __init__(self, library_service=None, history_service=None):
+    def __init__(self, library_service=None, history_service=None, settings_service=None):
         super().__init__()
         self.library_service = library_service or LibraryService()
         self.history_service = history_service or HistoryService()
+        self.settings_service = settings_service
         self._active_filters = {}
         self._last_error = None
+        self._rating_press_active = False
 
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(16, 16, 16, 16)
@@ -86,8 +90,15 @@ class LibraryView(QWidget):
         self.filter_toggle_button.setAccessibleName("Mostrar filtros de biblioteca")
         self.refresh_button = QPushButton("Actualizar")
         self.refresh_button.setAccessibleName("Actualizar resultados de biblioteca")
+        self.key_notation = QComboBox()
+        self.key_notation.setAccessibleName("Notación de tonalidad")
+        self.key_notation.addItem("Key: ambas", "both")
+        self.key_notation.addItem("Key: Camelot", "camelot")
+        self.key_notation.addItem("Key: musical", "musical")
+        self._load_key_notation_preference()
 
         layout.addWidget(self.search, 1)
+        layout.addWidget(self.key_notation)
         layout.addWidget(self.filter_toggle_button)
         layout.addWidget(self.refresh_button)
         self.layout.addWidget(toolbar)
@@ -136,6 +147,7 @@ class LibraryView(QWidget):
         self.table = QTableView()
         self.table.setObjectName("libraryTable")
         self.model = TrackTableModel([], self.library_service.load_more)
+        self.model.set_key_notation(self.key_notation.currentData())
         self.table.setModel(self.model)
         self.table.setSelectionBehavior(QTableView.SelectRows)
         self.table.setSelectionMode(QTableView.SingleSelection)
@@ -144,14 +156,14 @@ class LibraryView(QWidget):
         self.table.setSortingEnabled(False)
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
+        self.table.viewport().installEventFilter(self)
 
         header = self.table.horizontalHeader()
         header.setSectionsClickable(True)
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.Stretch)
-        header.setSectionResizeMode(2, QHeaderView.Stretch)
-        for section in (3, 4, 5, 6):
-            header.setSectionResizeMode(section, QHeaderView.ResizeToContents)
+        header.setSectionsMovable(True)
+        header.setSectionResizeMode(QHeaderView.Interactive)
+        for section, width in enumerate((170, 180, 150, 130, 130, 180, 150, 80, 70, 80, 90, 130)):
+            header.resizeSection(section, width)
         header.sectionClicked.connect(self.sort_tracks)
 
         self.state_page = QFrame()
@@ -190,15 +202,36 @@ class LibraryView(QWidget):
         layout.addWidget(self.load_preview_button)
         self.layout.addWidget(selection_bar)
 
+    def _load_key_notation_preference(self):
+        notation = "both"
+        if self.settings_service is not None:
+            try:
+                notation = self.settings_service.get().library.key_notation
+            except Exception:
+                pass
+        index = self.key_notation.findData(notation)
+        self.key_notation.setCurrentIndex(index if index >= 0 else 0)
+
+    def _change_key_notation(self):
+        notation = self.key_notation.currentData()
+        self.model.set_key_notation(notation)
+        if self.settings_service is not None:
+            try:
+                self.settings_service.update({"library": {"key_notation": notation}})
+            except Exception:
+                self.info_label.setText("No se pudo guardar la preferencia de tonalidad")
+
     def _connect_signals(self):
         self.search.textChanged.connect(self.filter_tracks)
         self.filter_toggle_button.toggled.connect(self.filter_panel.setVisible)
         self.apply_filters_button.clicked.connect(self.apply_filters)
         self.clear_filters_button.clicked.connect(self.clear_filters)
         self.refresh_button.clicked.connect(self.refresh_tracks)
+        self.key_notation.currentIndexChanged.connect(self._change_key_notation)
         self.load_preview_button.clicked.connect(self.request_preview_load)
         self.model.rowsInserted.connect(self._after_rows_inserted)
         self.table.selectionModel().selectionChanged.connect(self.on_selection_changed)
+        self.table.doubleClicked.connect(self._handle_table_double_click)
 
     def load_tracks(self):
         self._show_loading("Cargando biblioteca", "Preparando resultados…")
@@ -264,6 +297,8 @@ class LibraryView(QWidget):
 
     def sort_tracks(self, section):
         column = self.COLUMNS[section]
+        if column is None:
+            return
         header = self.table.horizontalHeader()
         direction = "desc" if header.sortIndicatorOrder() == Qt.AscendingOrder else "asc"
         self._show_loading("Ordenando biblioteca", "Aplicando el orden seleccionado…")
@@ -274,6 +309,41 @@ class LibraryView(QWidget):
             return
         self._present_result(tracks, has_more)
         header.setSortIndicator(section, Qt.DescendingOrder if direction == "desc" else Qt.AscendingOrder)
+
+    def _set_track_rating(self, row, rating):
+        track = self.model.track_at(row)
+        if track is None or getattr(track, "id", None) is None:
+            return
+        try:
+            updated = self.library_service.update_rating(track.id, rating)
+        except Exception:
+            self.info_label.setText("No se pudo actualizar el rating")
+            return
+        track.rating = getattr(updated, "rating", rating)
+        index = self.model.index(row, 11)
+        self.model.dataChanged.emit(index, index, [Qt.DisplayRole])
+
+    def eventFilter(self, watched, event):
+        if watched is self.table.viewport() and event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+            index = self.table.indexAt(event.position().toPoint())
+            if index.isValid() and index.column() == 11:
+                bounds = self.table.visualRect(index)
+                stars_width = self.table.fontMetrics().horizontalAdvance("★★★★★")
+                stars_left = bounds.center().x() - stars_width / 2
+                position = event.position().x()
+                if stars_left <= position <= stars_left + stars_width:
+                    star_width = max(1, stars_width / 5)
+                    rating = min(5, max(1, int((position - stars_left) / star_width) + 1))
+                    track = self.model.track_at(index.row())
+                    if track is not None and int(getattr(track, "rating", 0) or 0) == rating:
+                        rating = 0
+                    self._set_track_rating(index.row(), rating)
+                self._rating_press_active = True
+                return True
+        if watched is self.table.viewport() and event.type() == QEvent.MouseButtonRelease and self._rating_press_active:
+            self._rating_press_active = False
+            return True
+        return super().eventFilter(watched, event)
 
     def _present_result(self, tracks, has_more, query_active=None):
         self.model.set_page(tracks, has_more)
@@ -333,6 +403,7 @@ class LibraryView(QWidget):
         track = self.model.track_at(indexes[0].row())
         if track:
             self.history_service.record_track_selected(track.id)
+            self.track_selected.emit(track)
             self.load_preview_button.setEnabled(
                 bool(getattr(track, "id", None) is not None and getattr(track, "filepath", None))
             )
@@ -353,3 +424,10 @@ class LibraryView(QWidget):
             self.info_label.setText("Seleccioná una pista válida para cargar")
             return
         self.preview_track_requested.emit(track)
+
+    def _handle_table_double_click(self, index):
+        """Use the same internal load flow as the explicit button action."""
+        if not index.isValid():
+            return
+        self.table.setCurrentIndex(index)
+        self.request_preview_load()

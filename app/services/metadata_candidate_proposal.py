@@ -39,7 +39,8 @@ class MetadataProposalDTO:
     ambiguous_terms: Tuple[Tuple[str, Tuple[str, ...]], ...]
     unknown_terms: Tuple[str, ...]
     warnings: Tuple[str, ...]
-    selectable_fields: Tuple[str, ...] = ("genre", "secondary_genres", "styles")
+    selectable_fields: Tuple[str, ...] = ("genre", "secondary_genres", "styles", "label")
+    proposed_label: Optional[str] = None
 
 
 class MetadataCandidateProposalService:
@@ -86,6 +87,10 @@ class MetadataCandidateProposalService:
         proposed_styles = tuple(result.styles)
         candidate_genres = tuple(result.candidate_genres if hasattr(result, 'candidate_genres') else ())
         conflicts = tuple(result.conflicts if hasattr(result, 'conflicts') else ())
+        labels = sorted(
+            ((candidate.confidence, candidate.label.strip()) for candidate in candidates if candidate.label and candidate.label.strip()),
+            key=lambda item: (-item[0], item[1].casefold()),
+        )
 
         return MetadataProposalDTO(
             current_metadata=current_metadata,
@@ -100,4 +105,5 @@ class MetadataCandidateProposalService:
             ambiguous_terms=ambiguous_terms,
             unknown_terms=unknown_terms,
             warnings=tuple(warnings + result.warnings),
+            proposed_label=labels[0][1] if labels else None,
         )

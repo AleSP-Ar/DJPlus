@@ -186,6 +186,7 @@ class Track(Base):
     title = Column(String, nullable=False)
     artist = Column(String, nullable=False)
     album = Column(String, nullable=True)
+    label = Column(String, nullable=True)
     genre = Column(String, nullable=True)
 
     filepath = Column(String, unique=True, nullable=False)

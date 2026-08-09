@@ -73,6 +73,9 @@ class LibraryService:
         return self.load_library()
 
     def refresh(self):
+        session = getattr(self.repository, "session", None)
+        if session is not None and callable(getattr(session, "expire_all", None)):
+            session.expire_all()
         return self.load_library()
 
     def count_tracks(self):
@@ -86,6 +89,17 @@ class LibraryService:
                 self.filter_criteria,
             )
         return self._result_count
+
+    def update_rating(self, track_id, rating):
+        """Persist one user-selected star rating without changing audio metadata."""
+        if not isinstance(track_id, int):
+            raise TypeError("track_id debe ser entero.")
+        if not isinstance(rating, int) or not 0 <= rating <= 5:
+            raise ValueError("rating debe estar entre 0 y 5.")
+        track = self.repository.get_by_id(track_id)
+        if track is None:
+            raise ValueError("La pista seleccionada ya no existe.")
+        return self.repository.update_track_metadata(track, {"rating": rating})
 
     def iter_ranking_candidates(self, *, batch_size, filters, excluded_track_ids, cancellation=None):
         """Global read-only source; does not alter current UI pagination state."""

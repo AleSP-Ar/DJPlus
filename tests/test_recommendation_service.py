@@ -3,7 +3,7 @@ import unittest
 from dataclasses import dataclass
 
 from app.services.dj_intelligence_service import DJIntelligenceService
-from app.services.recommendation_scoring import RecommendationScoringEngine
+from app.services.recommendation_scoring import RecommendationReasonDTO, RecommendationScoreDTO, RecommendationScoringEngine
 from app.services.recommendation_service import RecommendationQueryDTO, RecommendationService, RecommendationServiceError
 
 
@@ -13,6 +13,8 @@ class Track:
     bpm: float | None
     key: str | None
     energy: float | None
+    artist: str | None = None
+    label: str | None = None
 
 
 class HistoryServiceDouble:
@@ -38,9 +40,9 @@ class RecommendationServiceTests(unittest.TestCase):
 
         ranked = self.service.recommend(query)
 
-        self.assertEqual([(item.rank, item.candidate_track_id, item.score) for item in ranked], [(1, 2, 100), (2, 3, 0)])
-        self.assertEqual(len(ranked[0].reasons), 4)
-        self.assertEqual(ranked[0].confidence, 1.0)
+        self.assertEqual([(item.rank, item.candidate_track_id, item.score) for item in ranked], [(1, 2, 100)])
+        self.assertEqual(len(ranked[0].reasons), 5)
+        self.assertEqual(ranked[0].confidence, 0.6)
 
     def test_limit_and_deterministic_tie_break_use_candidate_id(self):
         query = RecommendationQueryDTO(self.current, (
@@ -53,6 +55,33 @@ class RecommendationServiceTests(unittest.TestCase):
 
         self.assertEqual([item.candidate_track_id for item in ranked], [2, 4])
         self.assertEqual([item.rank for item in ranked], [1, 2])
+
+    def test_label_match_has_priority_over_artist_after_musical_criteria(self):
+        current = Track(1, 124, "8A", 70, artist="Current Artist", label="Reference Label")
+        query = RecommendationQueryDTO(current, (
+            Track(2, 125, "8A", 75, artist="Other Artist", label="reference label"),
+            Track(3, 125, "8A", 75, artist="current artist", label="Other Label"),
+        ))
+
+        ranked = self.service.recommend(query)
+
+        self.assertEqual([item.candidate_track_id for item in ranked], [2, 3])
+
+    def test_zero_score_is_never_recommendable(self):
+        score = RecommendationScoreDTO(
+            1,
+            2,
+            0,
+            (
+                RecommendationReasonDTO("genre", 35, "Compatible."),
+                RecommendationReasonDTO("key", 20, "Compatible."),
+                RecommendationReasonDTO("bpm", 15, "Compatible."),
+                RecommendationReasonDTO("energy", 0, "No disponible."),
+                RecommendationReasonDTO("history", 0, "Sin historial."),
+            ),
+        )
+
+        self.assertFalse(self.service._is_recommendable(score))
 
     def test_query_validation_and_service_have_no_persistence_or_ai_access(self):
         with self.assertRaises(RecommendationServiceError):

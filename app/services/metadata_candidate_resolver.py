@@ -14,6 +14,7 @@ class CandidateDTO:
     genre_term: Optional[str]
     style_terms: List[str]
     confidence: float  # 0..1
+    label: Optional[str] = None
 
 
 @dataclass

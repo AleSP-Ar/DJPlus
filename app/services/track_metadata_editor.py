@@ -7,7 +7,7 @@ from app.database.unit_of_work import UnitOfWork
 from .action_pipeline import ActionPipeline, ActionType
 from .confirmation_manager import ConfirmationManager, ConfirmationRequestDTO
 
-FIELDS = ("title", "artist", "album", "genre", "rating", "bpm", "key", "energy")
+FIELDS = ("title", "artist", "album", "label", "genre", "rating", "bpm", "key", "energy")
 
 class TrackMetadataEditError(ValueError): pass
 
@@ -23,7 +23,7 @@ class TrackMetadataPatchDTO:
         for field, value in self.values:
             if field not in FIELDS: raise TrackMetadataEditError("Campo de metadata no permitido.")
             if field in {"title", "artist"} and (not isinstance(value, str) or not value.strip()): raise TrackMetadataEditError("title y artist no pueden vaciarse.")
-            if field in {"album", "genre", "key"} and value is not None and not isinstance(value, str): raise TrackMetadataEditError("El campo textual debe ser texto o nulo.")
+            if field in {"album", "label", "genre", "key"} and value is not None and not isinstance(value, str): raise TrackMetadataEditError("El campo textual debe ser texto o nulo.")
             if field == "rating" and (not isinstance(value, int) or not 0 <= value <= 5): raise TrackMetadataEditError("rating debe estar entre 0 y 5.")
             if field == "bpm" and value is not None and (not isinstance(value, (int,float)) or value <= 0): raise TrackMetadataEditError("bpm debe ser positivo o nulo.")
             if field == "energy" and (not isinstance(value, int) or not 0 <= value <= 100): raise TrackMetadataEditError("energy debe estar entre 0 y 100.")

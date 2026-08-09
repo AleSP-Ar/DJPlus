@@ -49,6 +49,13 @@ class GlobalRankingServiceTests(unittest.TestCase):
         result, _ = self._rank(((a, missing, b),), limit=3)
         self.assertEqual([item.candidate_track_id for item in result.recommendations[:2]], [2, 4])
         self.assertEqual(result.stats.incomplete_metadata, 1)
+
+    def test_zero_score_candidates_are_discarded_before_top_k(self):
+        zero_score = RankingTrackDTO(2, None, None, None)
+        result, _ = self._rank(((zero_score,),), limit=3)
+
+        self.assertEqual(result.recommendations, ())
+        self.assertEqual(result.stats.discarded, 1)
     def test_cancelled_does_not_publish_partial_results_and_validates_k(self):
         token = _Cancel(); token.value = True
         result, _ = self._rank(((RankingTrackDTO(2, 124, "8A", 70),),), cancellation=token)

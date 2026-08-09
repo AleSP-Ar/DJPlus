@@ -22,6 +22,7 @@ class RecommendationFacadeQueryDTO:
     limit: int = 10
     recent_history_limit: int = 20
     load_more: bool = False
+    min_score: int = 45
 
     def __post_init__(self):
         track_id = getattr(self.current_track, "id", None)
@@ -45,6 +46,8 @@ class RecommendationFacadeQueryDTO:
             raise RecommendationFacadeError("recent_history_limit debe estar entre 0 y 100.")
         if not isinstance(self.load_more, bool):
             raise RecommendationFacadeError("load_more debe ser booleano.")
+        if not isinstance(self.min_score, int) or not 1 <= self.min_score <= 100:
+            raise RecommendationFacadeError("min_score debe estar entre 1 y 100.")
 
     def filters(self):
         return {name: value for name, value in {
@@ -141,7 +144,7 @@ class RecommendationFacade:
         current_id = active_query.current_track.id
         candidates = tuple(track for track in rows if getattr(track, "id", None) != current_id and getattr(track, "id", None) not in recent_ids)
         ranking_started = time.perf_counter()
-        ranked = self._recommendation_service.recommend(RecommendationQueryDTO(active_query.current_track, candidates, active_query.limit))
+        ranked = tuple(item for item in self._recommendation_service.recommend(RecommendationQueryDTO(active_query.current_track, candidates, active_query.limit)) if item.score >= active_query.min_score)
         self._last_stage_ms["ranking"] = (time.perf_counter() - ranking_started) * 1000
         explanation = self._explanation(active_query, total, len(recent_ids), len(ranked))
         return RecommendationPageDTO(ranked, total, tuple(sorted(recent_ids)), has_more, self._page_number, explanation)
@@ -152,7 +155,7 @@ class RecommendationFacade:
         recent_ids = self._recent_track_ids(query.recent_history_limit)
         self._last_stage_ms["history"] = (time.perf_counter() - history_started) * 1000
         ranking_started = time.perf_counter()
-        result = self._global_ranking_service.rank(GlobalRankingRequestDTO(query.current_track, query.limit, excluded_track_ids=tuple(sorted(recent_ids)), **query.filters()))
+        result = self._global_ranking_service.rank(GlobalRankingRequestDTO(query.current_track, query.limit, min_score=query.min_score, excluded_track_ids=tuple(sorted(recent_ids)), **query.filters()))
         self._last_stage_ms["ranking"] = (time.perf_counter() - ranking_started) * 1000
         self._last_stage_ms["library"] = result.stats.duration_ms
         self._page_number = 1; self._last_query = query

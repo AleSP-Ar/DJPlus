@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import socket
 import time
 from threading import Lock
@@ -170,12 +171,12 @@ class MusicBrainzMetadataProvider(MetadataCandidateProviderProtocol):
         if not isinstance(current_metadata, TrackMetadataDTO):
             raise TypeError("current_metadata must be TrackMetadataDTO")
 
-        query = self._build_query(current_metadata)
-        if not query:
-            return []
-
-        recordings = self._client.search_recordings(query)
-        return self._extract_candidates(recordings)
+        for query in self._build_queries(current_metadata):
+            recordings = self._client.search_recordings(query)
+            candidates = self._extract_candidates(recordings)
+            if candidates:
+                return candidates
+        return []
 
     def _build_query(self, metadata: TrackMetadataDTO) -> str:
         parts: List[str] = []
@@ -186,6 +187,25 @@ class MusicBrainzMetadataProvider(MetadataCandidateProviderProtocol):
         if metadata.album and metadata.album.strip():
             parts.append(f'release:"{self._escape(metadata.album)}"')
         return " AND ".join(parts)
+
+    def _build_queries(self, metadata: TrackMetadataDTO) -> tuple[str, ...]:
+        strict = self._build_query(metadata)
+        clean_title = self._clean_title(metadata.title)
+        if not clean_title or clean_title == (metadata.title or "").strip():
+            return (strict,) if strict else ()
+        fallback_parts: List[str] = []
+        if clean_title:
+            fallback_parts.append(f'recording:"{self._escape(clean_title)}"')
+        if metadata.artist and metadata.artist.strip():
+            fallback_parts.append(f'artist:"{self._escape(metadata.artist)}"')
+        fallback = " AND ".join(fallback_parts)
+        return tuple(dict.fromkeys(query for query in (strict, fallback) if query))
+
+    @staticmethod
+    def _clean_title(value: str | None) -> str:
+        if not isinstance(value, str):
+            return ""
+        return re.sub(r"\s*[\(\[][^\)\]]*(?:mix|edit|remix|version)[^\)\]]*[\)\]]\s*$", "", value, flags=re.IGNORECASE).strip()
 
     @staticmethod
     def _escape(value: str) -> str:

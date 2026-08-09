@@ -44,6 +44,17 @@ class MusicBrainzMetadataProviderTests(unittest.TestCase):
         self.assertEqual(candidates[1].genre_term, "deep_house")
         self.assertEqual(candidates[1].confidence, 0.8)
 
+    def test_query_fallback_removes_mix_suffix_and_album_constraint(self):
+        provider = MusicBrainzMetadataProvider(transport=MockProviderTransport())
+        metadata = TrackMetadataDTO(1, "Directions (Original Mix)", "1979", "Compilation", None, 0, None, None, 0)
+
+        queries = provider._build_queries(metadata)
+
+        self.assertEqual(len(queries), 2)
+        self.assertIn('recording:"Directions (Original Mix)"', queries[0])
+        self.assertIn('release:"Compilation"', queries[0])
+        self.assertEqual(queries[1], 'recording:"Directions" AND artist:"1979"')
+
     def test_fetch_candidates_ignores_invalid_json(self):
         transport = MockProviderTransport(text_body="not json")
         provider = MusicBrainzMetadataProvider(transport=transport)

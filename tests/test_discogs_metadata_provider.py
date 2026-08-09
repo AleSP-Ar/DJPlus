@@ -39,6 +39,28 @@ class DiscogsMetadataProviderTests(unittest.TestCase):
         self.assertEqual(candidates[1].genre_term, "Progressive Trance")
         self.assertEqual(candidates[1].style_terms, ["Driving"])
 
+    def test_query_fallback_removes_mix_suffix_and_album(self):
+        provider = DiscogsMetadataProvider(transport=MockProviderTransport())
+        metadata = TrackMetadataDTO(1, "Directions (Original Mix)", "1979", "Compilation", None, 0, None, None, 0)
+
+        self.assertEqual(
+            provider._build_queries(metadata),
+            ("Directions (Original Mix) 1979 Compilation", "Directions 1979"),
+        )
+
+    def test_remix_fallback_filters_unrelated_releases(self):
+        provider = DiscogsMetadataProvider(transport=MockProviderTransport())
+        metadata = TrackMetadataDTO(1, "Cola (ARTBAT Remix)", "CamelPhat", None, None, 0, None, None, 0)
+        results = [
+            {"title": "Camelphat - Dark Matter"},
+            {"title": "CamelPhat & Elderbrook - Cola (ARTBAT Remix)"},
+        ]
+
+        self.assertEqual(
+            provider._matching_results(results, metadata),
+            [{"title": "CamelPhat & Elderbrook - Cola (ARTBAT Remix)"}],
+        )
+
     def test_fetch_candidates_ignores_invalid_json(self):
         transport = MockProviderTransport(text_body="not json")
         provider = DiscogsMetadataProvider(transport=transport)
@@ -73,6 +95,22 @@ class DiscogsMetadataProviderTests(unittest.TestCase):
         self.assertIn("User-Agent", dict(request.headers))
         self.assertIn("Authorization", dict(request.headers))
         self.assertTrue("discogs.com" in request.url)
+        self.assertIn("artist=Artist+Name", request.url)
+        self.assertIn("track=Song+Title", request.url)
+
+    def test_fetch_candidates_uses_artist_and_clean_track_for_mix_titles(self):
+        transport = MockProviderTransport(json_body={
+            "results": [{"id": 14507051, "title": "1979 - Where Are You / Directions / Lock 33", "label": ["Soma"], "genre": ["Electronic"], "style": ["Progressive House"], "score": 95}]
+        })
+        provider = DiscogsMetadataProvider(transport=transport)
+        metadata = TrackMetadataDTO(1, "Directions (Original Mix)", "1979", None, None, 0, None, None, 0)
+
+        candidates = tuple(provider.fetch_candidates(metadata))
+
+        self.assertEqual(candidates[0].genre_term, "Progressive House")
+        self.assertEqual(candidates[0].label, "Soma")
+        self.assertIn("artist=1979", transport.calls[0].url)
+        self.assertIn("track=Directions", transport.calls[0].url)
 
     def test_fetch_candidates_deduplicates_and_orders_deterministically(self):
         json_body = {

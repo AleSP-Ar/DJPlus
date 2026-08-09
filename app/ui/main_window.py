@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QPushButton,
+    QScrollArea,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -120,12 +121,14 @@ class MainWindow(QMainWindow):
         self.playlist_panel = self._dependencies.playlist_panel or PlaylistPanel()
         self.import_panel = self._dependencies.import_panel or ImportManagerPanel()
         self.track_metadata_panel = self._build_metadata_panel(library)
+        self._connect_library_metadata_selection(library)
+        self._connect_metadata_refresh(library)
 
         self._add_workspace("library", library)
         self._add_workspace("collections", self.collection_panel)
         self._add_workspace("playlists", self.playlist_panel)
         self._add_workspace("import", self.import_panel)
-        self._add_workspace("metadata", self.track_metadata_panel)
+        self._add_workspace("metadata", self._scrollable_workspace(self.track_metadata_panel))
         self._add_workspace(
             "assistant",
             self._dependencies.assistant_panel or self._create_availability_page(
@@ -176,6 +179,18 @@ class MainWindow(QMainWindow):
                 "Metadata", "La edición de metadata no está disponible en esta configuración."
             )
 
+    def _connect_library_metadata_selection(self, library):
+        selection_signal = getattr(library, "track_selected", None)
+        set_selected_track = getattr(self.track_metadata_panel, "set_selected_track", None)
+        if selection_signal is not None and callable(set_selected_track):
+            selection_signal.connect(set_selected_track)
+
+    def _connect_metadata_refresh(self, library):
+        changed_signal = getattr(self.track_metadata_panel, "metadata_changed", None)
+        refresh = getattr(library, "refresh_tracks", None)
+        if changed_signal is not None and callable(refresh):
+            changed_signal.connect(lambda: refresh())
+
     def _create_availability_page(self, title, message):
         page = QFrame()
         page.setObjectName("availabilityPage")
@@ -194,6 +209,16 @@ class MainWindow(QMainWindow):
 
     def _add_workspace(self, section, widget):
         self._page_indexes[section] = self.workspace_stack.addWidget(widget)
+
+    def _scrollable_workspace(self, widget):
+        """Keep long review flows reachable in short application windows."""
+        scroll_area = QScrollArea()
+        scroll_area.setObjectName("metadataScrollArea")
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.NoFrame)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setWidget(widget)
+        return scroll_area
 
     def _compose_optional_facades(self, library):
         try:

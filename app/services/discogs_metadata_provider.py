@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import socket
 import time
 from dataclasses import dataclass
@@ -77,11 +78,23 @@ class DiscogsAPIClient:
         if not isinstance(self.timeout_seconds, int) or self.timeout_seconds < 1:
             raise ValueError("timeout_seconds must be a positive integer")
 
-    def search_releases(self, query: str) -> List[Dict[str, Any]]:
-        if not isinstance(query, str) or not query.strip():
-            raise ValueError("query must be a non-empty string")
+    def search_releases(self, query: str = "", *, artist: str | None = None, track: str | None = None) -> List[Dict[str, Any]]:
+        if not isinstance(query, str):
+            raise ValueError("query must be text")
+        if artist is not None and (not isinstance(artist, str) or not artist.strip()):
+            raise ValueError("artist must be non-empty text or None")
+        if track is not None and (not isinstance(track, str) or not track.strip()):
+            raise ValueError("track must be non-empty text or None")
+        if not query.strip() and not (artist and track):
+            raise ValueError("query or artist and track are required")
 
-        params = {"q": query, "type": "release", "per_page": "5"}
+        params = {"type": "release", "per_page": "5"}
+        if query.strip():
+            params["q"] = query.strip()
+        if artist:
+            params["artist"] = artist.strip()
+        if track:
+            params["track"] = track.strip()
         url = f"https://api.discogs.com/database/search?{urlencode(params)}"
         request = TransportRequestDTO(
             request_id=f"discogs-{int(time.time() * 1000)}",
@@ -139,12 +152,28 @@ class DiscogsMetadataProvider(MetadataCandidateProviderProtocol):
         if not isinstance(current_metadata, TrackMetadataDTO):
             raise TypeError("current_metadata must be TrackMetadataDTO")
 
-        query = self._build_query(current_metadata)
-        if not query:
+        clean_title = self._clean_title(current_metadata.title)
+        artist = (current_metadata.artist or "").strip()
+        if clean_title and artist:
+            results = self._client.search_releases(artist=artist, track=clean_title)
+            candidates = self._extract_candidates(results)
+            if candidates:
+                return candidates
+
+            if clean_title != (current_metadata.title or "").strip():
+                for query in self._build_queries(current_metadata):
+                    results = self._matching_results(self._client.search_releases(query), current_metadata)
+                    candidates = self._extract_candidates(results)
+                    if candidates:
+                        return candidates
             return []
 
-        results = self._client.search_releases(query)
-        return self._extract_candidates(results)
+        for query in self._build_queries(current_metadata):
+            results = self._client.search_releases(query)
+            candidates = self._extract_candidates(results)
+            if candidates:
+                return candidates
+        return []
 
     def _build_query(self, metadata: TrackMetadataDTO) -> str:
         parts: List[str] = []
@@ -156,6 +185,38 @@ class DiscogsMetadataProvider(MetadataCandidateProviderProtocol):
             parts.append(metadata.album.strip())
         return " ".join(parts).strip()
 
+    def _build_queries(self, metadata: TrackMetadataDTO) -> tuple[str, ...]:
+        strict = self._build_query(metadata)
+        clean_title = self._clean_title(metadata.title)
+        if not clean_title or clean_title == (metadata.title or "").strip():
+            return (strict,) if strict else ()
+        fallback = " ".join(
+            value.strip()
+            for value in (clean_title, metadata.artist or "")
+            if isinstance(value, str) and value.strip()
+        )
+        return tuple(dict.fromkeys(query for query in (strict, fallback) if query))
+
+    @staticmethod
+    def _clean_title(value: str | None) -> str:
+        if not isinstance(value, str):
+            return ""
+        return re.sub(r"\s*[\(\[][^\)\]]*(?:mix|edit|remix|version)[^\)\]]*[\)\]]\s*$", "", value, flags=re.IGNORECASE).strip()
+
+    @classmethod
+    def _matching_results(cls, results: Iterable[Dict[str, Any]], metadata: TrackMetadataDTO) -> List[Dict[str, Any]]:
+        artist = (metadata.artist or "").strip().casefold()
+        title = cls._clean_title(metadata.title).casefold()
+        if not artist or not title:
+            return list(results)
+        return [
+            result
+            for result in results
+            if isinstance(result, dict)
+            and artist in str(result.get("title", "")).casefold()
+            and title in str(result.get("title", "")).casefold()
+        ]
+
     def _extract_candidates(self, results: List[Dict[str, Any]]) -> List[CandidateDTO]:
         deduped: Dict[tuple[str, str], CandidateDTO] = {}
         for result in results:
@@ -163,7 +224,11 @@ class DiscogsMetadataProvider(MetadataCandidateProviderProtocol):
             if evidence is None:
                 continue
             classification = self._classifier.classify(evidence)
-            candidate = self._select_release_candidate(classification.candidates, evidence.confidence)
+            candidate = self._select_release_candidate(
+                classification.candidates,
+                evidence.confidence,
+                self._first_label(result.get("label")),
+            )
             if candidate is None:
                 continue
             key = (candidate.genre_term or "", "|".join(candidate.style_terms))
@@ -186,7 +251,7 @@ class DiscogsMetadataProvider(MetadataCandidateProviderProtocol):
         return ordered
 
     @staticmethod
-    def _select_release_candidate(candidates: Iterable[CandidateDTO], confidence: float) -> Optional[CandidateDTO]:
+    def _select_release_candidate(candidates: Iterable[CandidateDTO], confidence: float, label: Optional[str] = None) -> Optional[CandidateDTO]:
         candidates = list(candidates)
         genre_candidates = [candidate for candidate in candidates if candidate.genre_term is not None]
         style_candidates = [candidate for candidate in candidates if candidate.genre_term is None and candidate.style_terms]
@@ -206,7 +271,16 @@ class DiscogsMetadataProvider(MetadataCandidateProviderProtocol):
             genre_term=genre_term,
             style_terms=style_terms,
             confidence=float(confidence),
+            label=label,
         )
+
+    @staticmethod
+    def _first_label(value: Any) -> Optional[str]:
+        values = [value] if isinstance(value, str) else value if isinstance(value, list) else []
+        for item in values:
+            if isinstance(item, str) and item.strip():
+                return item.strip()
+        return None
 
     def _coerce_evidence(self, result: Dict[str, Any]) -> Optional[DiscogsReleaseEvidenceDTO]:
         if not isinstance(result, dict):

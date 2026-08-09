@@ -47,6 +47,7 @@ class GlobalRankingRequestDTO:
     excluded_track_ids: tuple[int, ...] = ()
     cancellation: object | None = None
     require_existing_file: bool = False
+    min_score: int = 45
     def __post_init__(self):
         if not isinstance(getattr(self.current_track, "id", None), int) or self.current_track.id < 1: raise InvalidRankingRequestError("Pista origen invalida.")
         if not isinstance(self.limit, int) or not 1 <= self.limit <= 100: raise InvalidRankingRequestError("K debe estar entre 1 y 100.")
@@ -54,6 +55,7 @@ class GlobalRankingRequestDTO:
         if self.bpm_min is not None and self.bpm_max is not None and self.bpm_min > self.bpm_max: raise InvalidRankingRequestError("Rango BPM invalido.")
         if not isinstance(self.excluded_track_ids, tuple) or not all(isinstance(item, int) and item > 0 for item in self.excluded_track_ids): raise InvalidRankingRequestError("Exclusiones invalidas.")
         if not isinstance(self.require_existing_file, bool): raise InvalidRankingRequestError("require_existing_file debe ser booleano.")
+        if not isinstance(self.min_score, int) or not 1 <= self.min_score <= 100: raise InvalidRankingRequestError("min_score invalido.")
     def filters(self): return {name: value for name, value in {"bpm_min": self.bpm_min, "bpm_max": self.bpm_max, "key": self.key, "genre": self.genre, "favorite": self.favorite}.items() if value is not None}
 
 
@@ -116,6 +118,9 @@ class GlobalRankingService:
                     processed += 1
                     if candidate.bpm is None or candidate.key is None or candidate.energy is None: incomplete += 1
                     score = self._recommendation_service._scoring_engine.score(request.current_track, candidate)
+                    if not self._recommendation_service._is_recommendable(score) or score.score < request.min_score:
+                        discarded += 1
+                        continue
                     key = (score.score, score.confidence, -candidate.id)
                     item = (key, score, candidate)
                     if len(heap) < request.limit: heapq.heappush(heap, item)

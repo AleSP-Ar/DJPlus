@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSpinBox,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -19,12 +20,13 @@ from app.services.recommendation_facade import RecommendationFacade, Recommendat
 class LocalIntelligencePanel(QWidget):
     """Display compatible track recommendations using only local services."""
 
-    def __init__(self, recommendation_facade, library_view=None, parent=None):
+    def __init__(self, recommendation_facade, library_view=None, settings_service=None, parent=None):
         super().__init__(parent)
         if not isinstance(recommendation_facade, RecommendationFacade):
             raise TypeError("LocalIntelligencePanel requiere RecommendationFacade.")
         self._recommendation_facade = recommendation_facade
         self._library_view = library_view
+        self._settings_service = settings_service
         self._reference_track = None
         self.setObjectName("intelligencePanel")
 
@@ -78,6 +80,13 @@ class LocalIntelligencePanel(QWidget):
         actions = QHBoxLayout()
         actions.setSpacing(8)
         actions.addStretch(1)
+        actions.addWidget(QLabel("Score mínimo"))
+        self.min_score = QSpinBox()
+        self.min_score.setRange(1, 100)
+        self.min_score.setAccessibleName("Score mínimo de recomendaciones")
+        self.min_score.setValue(self._load_min_score())
+        self.min_score.valueChanged.connect(self._save_min_score)
+        actions.addWidget(self.min_score)
         self.search_button = QPushButton("Buscar compatibles")
         self.search_button.setObjectName("intelligencePrimary")
         self.search_button.clicked.connect(self._search_recommendations)
@@ -142,13 +151,29 @@ class LocalIntelligencePanel(QWidget):
         self.status_label.setText("Buscando compatibles…")
         try:
             page = self._recommendation_facade.recommend(
-                RecommendationFacadeQueryDTO(current_track=self._reference_track)
+                RecommendationFacadeQueryDTO(current_track=self._reference_track, min_score=self.min_score.value())
             )
             self._show_recommendation_page(page)
             self.status_label.setText("Resultados actualizados")
         except Exception as error:
             self.result_view.setPlainText(str(error))
             self.status_label.setText("Error")
+
+    def _load_min_score(self):
+        if self._settings_service is not None:
+            try:
+                return self._settings_service.get().library.recommendation_min_score
+            except Exception:
+                pass
+        return 45
+
+    def _save_min_score(self, value):
+        if self._settings_service is None:
+            return
+        try:
+            self._settings_service.update({"library": {"recommendation_min_score": int(value)}})
+        except Exception:
+            self.status_label.setText("No se pudo guardar el score mínimo")
 
     def _show_recommendation_page(self, page):
         lines = [page.explanation, ""]

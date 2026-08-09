@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 
 from app.services.library_service import LibraryService
 from app.services.filter_engine import FilterEngine
@@ -29,6 +30,14 @@ class FakeTrackRepository:
 
     def close(self):
         self.closed = True
+
+    def get_by_id(self, track_id):
+        return SimpleNamespace(id=track_id, rating=0) if track_id == 1 else None
+
+    def update_track_metadata(self, track, values):
+        self.rating_update = (track.id, values)
+        track.rating = values["rating"]
+        return track
 
 
 class LibraryServiceTests(unittest.TestCase):
@@ -78,6 +87,13 @@ class LibraryServiceTests(unittest.TestCase):
     def test_close_delegates_to_repository(self):
         self.service.close()
         self.assertTrue(self.repository.closed)
+
+    def test_update_rating_persists_only_the_validated_star_value(self):
+        updated = self.service.update_rating(1, 5)
+        self.assertEqual(updated.rating, 5)
+        self.assertEqual(self.repository.rating_update, (1, {"rating": 5}))
+        with self.assertRaises(ValueError):
+            self.service.update_rating(1, 6)
 
 
 class EngineTests(unittest.TestCase):

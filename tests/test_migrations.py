@@ -32,13 +32,13 @@ class MigrationTests(unittest.TestCase):
         )
         track_columns = {column["name"] for column in inspector.get_columns("tracks")}
         self.assertTrue(
-            {"is_favorite", "genre", "bitrate", "sample_rate", "import_file_size", "import_file_modified_at", "analyzed_at", "analyzer_version", "bpm_confidence", "key_confidence", "energy_confidence"}.issubset(
+            {"is_favorite", "label", "genre", "bitrate", "sample_rate", "import_file_size", "import_file_modified_at", "analyzed_at", "analyzer_version", "bpm_confidence", "key_confidence", "energy_confidence"}.issubset(
                 track_columns
             )
         )
         with engine.connect() as connection:
             versions = connection.execute(text("SELECT version FROM schema_migrations")).scalars().all()
-        self.assertEqual(versions, ["0001_baseline_schema", "0002_import_engine", "0003_track_import_snapshots", "0004_analysis_provenance", "0005_track_metadata_history"])
+        self.assertEqual(versions, [version for version, _description, _function in MIGRATIONS])
         self.assertIn("track_metadata_history", inspector.get_table_names())
         indexes = {index["name"] for index in inspector.get_indexes("import_items")}
         self.assertIn("ix_import_items_job_status", indexes)
@@ -62,6 +62,7 @@ class MigrationTests(unittest.TestCase):
                 "file_hash",
                 "status",
                 "is_favorite",
+                "label",
                 "genre",
                 "bitrate",
                 "sample_rate",
@@ -81,7 +82,7 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(track, ("Existing track", "DJ Plus", "existing.mp3", 0))
         with engine.connect() as connection:
             versions = connection.execute(text("SELECT version FROM schema_migrations")).scalars().all()
-        self.assertEqual(versions, ["0001_baseline_schema", "0002_import_engine", "0003_track_import_snapshots", "0004_analysis_provenance", "0005_track_metadata_history"])
+        self.assertEqual(versions, [version for version, _description, _function in MIGRATIONS])
 
     def test_each_supported_historical_prefix_upgrades_idempotently(self):
         for count in range(1, len(MIGRATIONS) + 1):

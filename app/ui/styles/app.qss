@@ -127,3 +127,5 @@ QLabel#appSubtitle, QLabel#availabilityMessage { color: #98A6BE; }
 QLabel#pageTitle { font-size: 16px; font-weight: 600; }
 QLabel#availabilityTitle { font-size: 16px; font-weight: 600; }
 QStackedWidget#workspaceStack { background-color: #0B1020; }
+QScrollArea#metadataScrollArea { background-color: #0B1020; border: 0; }
+QScrollArea#metadataScrollArea > QWidget > QWidget { background-color: #0B1020; }

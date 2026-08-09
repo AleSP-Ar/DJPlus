@@ -1,6 +1,8 @@
 import unittest
 from types import SimpleNamespace
 
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtTest import QTest
 from app.ui.library_view import LibraryView
 from qt_test_helpers import ensure_qapplication
 
@@ -11,10 +13,15 @@ def _track(identifier, title="Track", artist="Artist", filepath="music.mp3"):
         title=title,
         artist=artist,
         album="Album",
+        label="Demo Label",
         bpm=124,
         key="8A",
         duration=180,
         rating=4,
+        genre="House",
+        secondary_genres_json='[["deep_house", "Deep House", 0.8]]',
+        styles_json='[["deep", "Deep", 0.75]]',
+        energy=80,
         filepath=filepath,
     )
 
@@ -26,6 +33,7 @@ class _Library:
         self.calls = []
         self.fail_refresh = False
         self.closed = False
+        self.rating_updates = []
 
     def load_library(self):
         self.calls.append(("load_library",))
@@ -56,6 +64,12 @@ class _Library:
 
     def count_results(self):
         return len(self.rows) + len(self.more_rows)
+
+    def update_rating(self, track_id, rating):
+        self.rating_updates.append((track_id, rating))
+        track = next(track for track in self.rows if track.id == track_id)
+        track.rating = rating
+        return track
 
     def close(self):
         self.closed = True
@@ -129,6 +143,67 @@ class LibraryViewUiTests(unittest.TestCase):
         self.assertEqual(self.library.calls[-1], ("load_more",))
         self.assertEqual(self.view.model.rowCount(), 2)
         self.assertIn("2 de 2", self.view.counter.text())
+
+    def test_library_shows_classification_columns_and_updates_rating(self):
+        headers = self.view.model.HEADERS
+        self.assertIn("Género", headers)
+        self.assertIn("Géneros secundarios", headers)
+        self.assertIn("Estilos", headers)
+        self.assertIn("Sello", headers)
+        self.assertEqual(self.view.model.data(self.view.model.index(0, 3), Qt.DisplayRole), "Demo Label")
+        self.assertEqual(self.view.model.data(self.view.model.index(0, 4), Qt.DisplayRole), "House")
+        self.assertEqual(self.view.model.data(self.view.model.index(0, 5), Qt.DisplayRole), "Deep House")
+        self.assertEqual(self.view.model.data(self.view.model.index(0, 6), Qt.DisplayRole), "Deep")
+
+        rating_index = self.view.model.index(0, 11)
+        self.view.show()
+        self.application.processEvents()
+        self.view.table.scrollTo(rating_index)
+        self.application.processEvents()
+        bounds = self.view.table.visualRect(rating_index)
+        stars_width = self.view.table.fontMetrics().horizontalAdvance("★★★★★")
+        QTest.mouseClick(
+            self.view.table.viewport(), Qt.LeftButton,
+            pos=QPoint(int(bounds.center().x() + stars_width / 2 - 1), bounds.center().y()),
+        )
+        self.assertEqual(self.library.rating_updates, [(1, 5)])
+        self.assertEqual(self.view.model.data(rating_index, Qt.DisplayRole), "★★★★★")
+        self.assertEqual(self.history.selected, [])
+
+        QTest.mouseClick(
+            self.view.table.viewport(), Qt.LeftButton,
+            pos=QPoint(int(bounds.center().x() + stars_width / 2 - 1), bounds.center().y()),
+        )
+        self.assertEqual(self.library.rating_updates[-1], (1, 0))
+        self.assertTrue(self.view.table.horizontalHeader().sectionsMovable())
+
+    def test_simple_click_selects_without_loading(self):
+        emitted = []
+        selected = []
+        self.view.preview_track_requested.connect(emitted.append)
+        self.view.track_selected.connect(selected.append)
+        self.view.set_preview_player_available(True)
+        self.view.table.setCurrentIndex(self.view.model.index(0, 0))
+        self.application.processEvents()
+
+        self.assertEqual(self.history.selected, [1])
+        self.assertEqual(selected, [self.library.rows[0]])
+        self.assertTrue(self.view.load_preview_button.isEnabled())
+        self.assertEqual(emitted, [])
+
+    def test_double_click_loads_the_selected_track_using_the_same_flow(self):
+        emitted = []
+        self.view.preview_track_requested.connect(emitted.append)
+        self.view.set_preview_player_available(True)
+        index = self.view.model.index(0, 0)
+        self.view.table.setCurrentIndex(index)
+        self.application.processEvents()
+
+        self.view.table.doubleClicked.emit(index)
+        self.application.processEvents()
+
+        self.assertEqual(self.history.selected, [1])
+        self.assertEqual(emitted, [self.library.rows[0]])
 
     def test_selection_and_preview_emit_the_existing_track_without_autoplay(self):
         emitted = []

@@ -100,6 +100,8 @@ class LibrarySettingsDTO:
     supported_formats: tuple[str, ...] = _KNOWN_EXTENSIONS
     page_size: int = 100
     result_limit: int = 1000
+    key_notation: str = "both"
+    recommendation_min_score: int = 45
 
     def __post_init__(self):
         if not isinstance(self.music_paths, tuple):
@@ -118,6 +120,9 @@ class LibrarySettingsDTO:
         object.__setattr__(self, "supported_formats", formats)
         _positive_int(self.page_size, "page_size", 1, 1000)
         _positive_int(self.result_limit, "result_limit", 1, 100000)
+        if self.key_notation not in {"camelot", "musical", "both"}:
+            raise SettingsValidationError("key_notation debe ser camelot, musical o both.")
+        _positive_int(self.recommendation_min_score, "recommendation_min_score", 1, 100)
 
 
 @dataclass(frozen=True)

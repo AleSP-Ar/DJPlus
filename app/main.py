@@ -42,9 +42,9 @@ def main():
         apply_global_stylesheet(app)
         library_service = LibraryService()
         history_service = HistoryService()
-        library_view = LibraryView(library_service, history_service)
+        library_view = LibraryView(library_service, history_service, settings)
         recommendation_facade = create_global_recommendation_facade(library_service, history_service)
-        intelligence_panel = LocalIntelligencePanel(recommendation_facade, library_view=library_view)
+        intelligence_panel = LocalIntelligencePanel(recommendation_facade, library_view=library_view, settings_service=settings)
         preview_player = create_preview_player_service(
             logger=logging_service.get_logger("preview"), settings_service=settings,
             history_port=HistoryPlaybackPortAdapter(history_service),

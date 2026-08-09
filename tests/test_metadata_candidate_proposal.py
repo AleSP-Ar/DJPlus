@@ -53,6 +53,16 @@ class MetadataCandidateProposalTests(unittest.TestCase):
         self.assertTrue(any(style[0] == "organic" or style[0] == "deep" for style in proposal.proposed_styles))
         self.assertEqual(proposal.current_metadata.genre, "progressive_house")
 
+    def test_proposes_the_highest_confidence_external_label(self):
+        providers = (
+            MockProvider((CandidateDTO(source="A", genre_term="Prog House", style_terms=[], confidence=0.8, label="First Label"),)),
+            MockProvider((CandidateDTO(source="B", genre_term="Prog House", style_terms=[], confidence=0.9, label="Preferred Label"),)),
+        )
+
+        proposal = self.service.create_proposal(self.current_metadata, providers)
+
+        self.assertEqual(proposal.proposed_label, "Preferred Label")
+
     def test_two_providers_disagree(self):
         providers = (
             MockProvider((CandidateDTO(source="A", genre_term="Prog House", style_terms=[], confidence=0.9),)),

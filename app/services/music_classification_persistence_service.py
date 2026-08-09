@@ -32,6 +32,7 @@ class ClassificationSelectionDTO:
     genre: bool = True
     secondary_genres: bool = True
     styles: bool = True
+    label: bool = True
 
 
 class MusicClassificationPersistenceService:
@@ -61,6 +62,8 @@ class MusicClassificationPersistenceService:
             values["secondary_genres_json"] = self._serialize_secondary_genres(proposal.proposed_secondary_genres)
         if selection.styles:
             values["styles_json"] = self._serialize_styles(proposal.proposed_styles)
+        if selection.label and proposal.proposed_label:
+            values["label"] = proposal.proposed_label
 
         with self._open_unit() as uow:
             track = uow.tracks.get_by_id(proposal.current_metadata.track_id)
@@ -137,7 +140,7 @@ class MusicClassificationPersistenceService:
     def _snapshot(self, track: Any) -> dict[str, Any]:
         return {
             field: getattr(track, field)
-            for field in ("genre", "primary_genre_confidence", "secondary_genres_json", "styles_json")
+            for field in ("genre", "primary_genre_confidence", "secondary_genres_json", "styles_json", "label")
             if hasattr(track, field)
         }
 

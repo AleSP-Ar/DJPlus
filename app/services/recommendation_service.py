@@ -68,9 +68,39 @@ class RecommendationService:
             if candidate.id == current_id:
                 continue
             score = self._scoring_engine.score(query.current_track, candidate)
-            scored.append(score)
-        ordered = sorted(scored, key=lambda item: (-item.score, -item.confidence, item.candidate_track_id))
+            if self._is_recommendable(score):
+                scored.append((score, candidate))
+        ordered = sorted(scored, key=lambda item: self._priority_key(item[0], item[1], query.current_track))
         return tuple(
-            RankedRecommendationDTO(index, item.candidate_track_id, item.score, item.confidence, item.reasons)
+            RankedRecommendationDTO(index, item[0].candidate_track_id, item[0].score, item[0].confidence, item[0].reasons)
             for index, item in enumerate(ordered[:query.limit], start=1)
         )
+
+    @staticmethod
+    def _is_recommendable(score):
+        return score.score > 0 and RecommendationService._has_musical_match(score)
+
+    @staticmethod
+    def _has_musical_match(score):
+        """Reject candidates with no genre, harmonic, or tempo connection."""
+        return any(
+            (
+                reason.criterion == "genre"
+                and reason.contribution >= 21
+                and "no disponible" not in reason.explanation.casefold()
+            )
+            or (reason.criterion == "key" and reason.contribution > 0)
+            or (reason.criterion == "bpm" and reason.contribution > 0)
+            for reason in score.reasons
+        )
+
+    @staticmethod
+    def _priority_key(score, candidate, reference):
+        reasons = {reason.criterion: reason.contribution for reason in score.reasons}
+        label_match = RecommendationService._same_text(getattr(reference, "label", None), getattr(candidate, "label", None))
+        artist_match = RecommendationService._same_text(getattr(reference, "artist", None), getattr(candidate, "artist", None))
+        return (-reasons.get("genre", 0), -reasons.get("key", 0), -reasons.get("bpm", 0), -int(label_match), -int(artist_match), -score.score, -score.confidence, score.candidate_track_id)
+
+    @staticmethod
+    def _same_text(left, right):
+        return isinstance(left, str) and isinstance(right, str) and bool(left.strip()) and left.strip().casefold() == right.strip().casefold()
