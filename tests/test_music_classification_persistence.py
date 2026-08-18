@@ -175,6 +175,26 @@ class MusicClassificationPersistenceServiceTests(unittest.TestCase):
         self.assertEqual(persisted["secondary_genres"], None)
         self.assertEqual(persisted["styles"], None)
 
+    def test_undo_restores_artwork_bytes_from_an_authoritative_proposal(self):
+        track = self._create_track()
+        track.artwork_data = b"original-cover"
+        track.artwork_mime = "image/jpeg"
+        self.session.commit()
+        service = MusicClassificationPersistenceService(unit_of_work_factory=lambda: self.session_factory())
+        proposal = MetadataProposalDTO(
+            current_metadata=TrackMetadataDTO(track.id, track.title, track.artist, track.album, track.genre, 0, None, None, 0),
+            proposed_primary_genre_id=None, proposed_primary_genre_label=None, proposed_primary_confidence=0.0,
+            proposed_evidence_count=0, candidate_genres=(), proposed_secondary_genres=(), proposed_styles=(),
+            conflicts=(), ambiguous_terms=(), unknown_terms=(), warnings=(), source="beatport",
+            identity_verified=True, auto_apply=True, artwork_data=b"beatport-cover", artwork_mime="image/png",
+        )
+        service.apply_confirmed_proposal(proposal, confirmation=True)
+        self.assertTrue(service.undo_last_classification(track.id))
+        with self.session_factory() as session:
+            restored = session.get(Track, track.id)
+            self.assertEqual(restored.artwork_data, b"original-cover")
+            self.assertEqual(restored.artwork_mime, "image/jpeg")
+
     def test_does_not_modify_audio_file(self):
         track = self._create_track()
         service = MusicClassificationPersistenceService(unit_of_work_factory=lambda: self.session_factory())

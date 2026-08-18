@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 from pathlib import Path
 
 from app.database import SessionLocal
@@ -56,8 +57,30 @@ class TrackRepository:
 
     def record_metadata_edit(self, track_id, fields, previous, new, origin, status, commit=True):
         from app.database.models import TrackMetadataHistory
-        entry = TrackMetadataHistory(track_id=track_id, fields_json=json.dumps(tuple(fields)), previous_json=json.dumps(previous), new_json=json.dumps(new), origin=origin, status=status)
+        entry = TrackMetadataHistory(track_id=track_id, fields_json=json.dumps(tuple(fields)), previous_json=self._history_json(previous), new_json=self._history_json(new), origin=origin, status=status)
         self.session.add(entry); self._finish(commit); return entry
+
+    @staticmethod
+    def _history_json(value):
+        return json.dumps(value, default=TrackRepository._history_default)
+
+    @staticmethod
+    def _history_default(value):
+        if isinstance(value, bytes):
+            return {"__djplus_bytes__": base64.b64encode(value).decode("ascii")}
+        raise TypeError(f"Unsupported metadata history value: {type(value).__name__}")
+
+    @staticmethod
+    def decode_history_json(value):
+        def restore(item):
+            if isinstance(item, dict):
+                if set(item) == {"__djplus_bytes__"}:
+                    return base64.b64decode(item["__djplus_bytes__"])
+                return {key: restore(child) for key, child in item.items()}
+            if isinstance(item, list):
+                return [restore(child) for child in item]
+            return item
+        return restore(json.loads(value))
 
     def latest_metadata_edit(self, track_id):
         from app.database.models import TrackMetadataHistory

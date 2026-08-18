@@ -117,12 +117,12 @@ class MusicClassificationPersistenceService:
             track = uow.tracks.get_by_id(track_id)
             if entry is None or track is None:
                 return False
-            previous = json.loads(entry.previous_json)
+            previous = TrackRepository.decode_history_json(entry.previous_json)
             uow.tracks.update_track_metadata(track, previous, commit=False)
             uow.tracks.record_metadata_edit(
                 track_id,
                 tuple(previous.keys()),
-                json.loads(entry.new_json),
+                TrackRepository.decode_history_json(entry.new_json),
                 previous,
                 entry.origin,
                 "restored",
