@@ -112,6 +112,22 @@ class MainWindowCompositionTests(unittest.TestCase):
             window.close()
         self.assertTrue(player._closed)
 
+    def test_navigation_compacts_without_losing_accessibility_in_a_narrow_window(self):
+        window, _, _ = self._injected_window()
+        try:
+            window.resize(900, 560)
+            window.show()
+            self.app.processEvents()
+            self.assertEqual(window.navigation_buttons["library"].text(), "B")
+            self.assertEqual(window.navigation_buttons["dj_set"].text(), "DJ")
+            self.assertEqual(window.navigation_buttons["dj_set"].accessibleName(), "Ir a DJ Set")
+            self.assertEqual(window.navigation_buttons["dj_set"].toolTip(), "DJ Set")
+            window.resize(1280, 800)
+            self.app.processEvents()
+            self.assertEqual(window.navigation_buttons["library"].text(), "Biblioteca")
+        finally:
+            window.close()
+
     def test_clean_isolated_lifecycle_uses_only_temporary_paths(self):
         """Exercise the real local boundaries without the global application DB."""
         before_threads = {thread.ident for thread in threading.enumerate()}

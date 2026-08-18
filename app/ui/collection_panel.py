@@ -22,7 +22,7 @@ class CollectionPanel(QWidget):
 
     def _build_ui(self):
         self.setObjectName("collectionsPanel")
-        self.setStyleSheet("QFrame#collectionToolbar,QFrame#collectionSection { background:#1f2937; border:1px solid #374151; border-radius:8px; } QLabel#collectionTitle { font-size:18px; font-weight:600; } QLabel#collectionHint,QLabel#collectionEmpty { color:#9ca3af; } QPushButton#collectionPrimary { background:#2563eb; color:white; font-weight:600; }")
+        self.setStyleSheet("QFrame#collectionToolbar,QFrame#collectionSection { background:#10182A; border:1px solid #253550; border-radius:9px; } QLabel#collectionTitle { color:#F1F5FF; font-size:19px; font-weight:700; } QLabel#collectionHint,QLabel#collectionEmpty { color:#8FA1BD; } QPushButton#collectionPrimary { background:#6259E8; border:1px solid #817AFF; color:white; font-weight:600; }")
         layout = QVBoxLayout(self); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(12)
         title = QLabel("Colecciones"); title.setObjectName("collectionTitle"); layout.addWidget(title)
         hint = QLabel("Organizá selecciones manuales y reglas inteligentes sin mezclar sus flujos."); hint.setObjectName("collectionHint"); layout.addWidget(hint)

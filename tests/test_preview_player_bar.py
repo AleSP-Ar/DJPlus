@@ -7,6 +7,7 @@ from app.database import init_database
 from app.services.preview_player import AudioOutputDeviceDTO, DeterministicPlaybackBackend, PreviewPlayerService, PreviewPlayerState, PreviewTrackDTO
 from app.services.settings_service import SettingsService
 from app.ui.main_window import MainWindow
+from app.ui.settings_panel import SettingsPanel
 from app.ui.widgets.preview_player_bar import PreviewPlayerBar, format_preview_time
 from qt_test_helpers import ensure_qapplication
 
@@ -66,7 +67,12 @@ class PreviewPlayerBarTests(unittest.TestCase):
         self.bar.volume_slider.setValue(0); self.assertEqual(self.service.snapshot().volume, 0.0)
         self.bar.volume_slider.setValue(100); self.bar._save_volume_preferences(); self.assertEqual(self.service.snapshot().volume, 1.0)
         self.assertEqual(self.settings.get().preview_player.volume, 1.0)
-        self.bar.device_combo.setCurrentIndex(self.bar.device_combo.findData("usb")); self.assertEqual(self.service.snapshot().output_device_id, "usb")
+        settings_panel = SettingsPanel(self.service)
+        try:
+            settings_panel.output_combo.setCurrentIndex(settings_panel.output_combo.findData("usb"))
+            self.assertEqual(self.service.snapshot().output_device_id, "usb")
+        finally:
+            settings_panel.close()
         self.bar.stop(); self.assertEqual(self.service.snapshot().state, PreviewPlayerState.STOPPED)
         self.assertEqual(self.history.calls, [5])
 
@@ -86,8 +92,8 @@ class PreviewPlayerBarTests(unittest.TestCase):
         root_layout = self.bar.layout()
         self.assertEqual(root_layout.count(), 4)
         title_row = root_layout.itemAt(0).layout()
-        self.assertEqual(title_row.count(), 1)
-        track_block = title_row.itemAt(0).widget()
+        self.assertEqual(title_row.count(), 2)
+        track_block = title_row.itemAt(1).widget()
         self.assertIsNotNone(track_block)
         self.assertIs(track_block.layout().itemAt(0).widget(), self.bar.track_label)
         self.assertIs(root_layout.itemAt(1).widget(), self.bar.track_hint_label)
@@ -103,7 +109,7 @@ class PreviewPlayerBarTests(unittest.TestCase):
     def test_responsive_controls_and_visual_state_accessibility(self):
         self.bar.show(); self.bar.resize(640, 180); self.app.processEvents()
         self.assertTrue(self.bar._compact_layout)
-        for control in (self.bar.play_button, self.bar.stop_button, self.bar.position_slider, self.bar.volume_slider, self.bar.device_combo):
+        for control in (self.bar.play_button, self.bar.stop_button, self.bar.position_slider, self.bar.volume_slider):
             self.assertFalse(control.isHidden())
             self.assertTrue(control.accessibleName())
         self.bar._set_visual_state(SimpleNamespace(output_available=True, state=PreviewPlayerState.LOADING))
@@ -113,7 +119,7 @@ class PreviewPlayerBarTests(unittest.TestCase):
         init_database(); window = MainWindow(preview_player_service=self.service)
         try:
             self.assertIsNotNone(window.preview_player_bar)
-            self.assertFalse(window.library_view.load_preview_button.isHidden())
+            self.assertIsNotNone(window.settings_panel)
         finally:
             window.close()
 

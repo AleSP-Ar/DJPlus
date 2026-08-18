@@ -37,10 +37,10 @@ class LocalIntelligencePanel(QWidget):
 
     def _build_ui(self):
         self.setStyleSheet(
-            "QFrame#intelligenceSection { background:#1f2937; border:1px solid #374151; border-radius:8px; } "
-            "QLabel#intelligenceTitle { font-size:18px; font-weight:600; } "
-            "QLabel#intelligenceSubtitle { color:#9ca3af; } "
-            "QPushButton#intelligencePrimary { background:#2563eb; color:white; font-weight:600; }"
+            "QFrame#intelligenceSection { background:#10182A; border:1px solid #253550; border-radius:9px; } "
+            "QLabel#intelligenceTitle { color:#F1F5FF; font-size:19px; font-weight:700; } "
+            "QLabel#intelligenceSubtitle { color:#8FA1BD; } "
+            "QPushButton#intelligencePrimary { background:#6259E8; border:1px solid #817AFF; color:white; font-weight:600; }"
         )
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)

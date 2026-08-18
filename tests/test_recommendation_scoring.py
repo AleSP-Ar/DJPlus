@@ -87,6 +87,11 @@ class RecommendationScoringTests(unittest.TestCase):
         without_genre = self.engine.score(self.reference, Track(2, 124, "8A", 70))
         self.assertGreater(with_genre.confidence, without_genre.confidence)
 
+    def test_missing_genre_keeps_a_concrete_harmonic_and_tempo_match(self):
+        result = self.engine.score(self.reference, Track(2, 125, "8A", 82))
+        self.assertGreater(result.score, 0)
+        self.assertLess(result.confidence, 1)
+
     def test_genre_incompatible_and_key_bpm_compatible_do_not_produce_high_score(self):
         reference = Track(1, 124, "8A", 70, genre="peak_time_techno")
         candidate = Track(2, 124, "8A", 70, genre="progressive_trance")

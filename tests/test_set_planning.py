@@ -43,3 +43,10 @@ class SetPlanningTests(unittest.TestCase):
     def test_validates_query_duplicates_and_uses_no_persistence(self):
         with self.assertRaises(SetPlanningError):
             SetPlanQueryDTO(self.initial, (_Track(2, 122, "8A", 65), _Track(2, 122, "8A", 65)), 2)
+
+    def test_bounds_the_ranking_request_when_the_candidate_pool_exceeds_100(self):
+        candidates = tuple(_Track(index, 122, "8A", 65) for index in range(2, 103))
+
+        plan = self.engine.plan(SetPlanQueryDTO(self.initial, candidates, 2))
+
+        self.assertEqual([track.track_id for track in plan.tracks], [1, 2])

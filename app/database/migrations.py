@@ -22,6 +22,7 @@ MIGRATIONS = (
     ("0005_track_metadata_history", "Add durable track metadata edit history", "_track_metadata_history"),
     ("0006_track_classification_persistence", "Persist confirmed music classification fields", "_track_classification_persistence"),
     ("0007_track_label", "Add optional record label metadata", "_track_label"),
+    ("0008_track_artwork", "Persist embedded or provider artwork", "_track_artwork"),
 )
 
 
@@ -265,3 +266,15 @@ def _track_label(connection):
     columns = {column["name"] for column in inspect(connection).get_columns("tracks")}
     if "label" not in columns:
         connection.execute(text("ALTER TABLE tracks ADD COLUMN label TEXT"))
+
+
+def _track_artwork(connection):
+    columns = {column["name"] for column in inspect(connection).get_columns("tracks")}
+    missing_columns = {
+        "artwork_data": "BLOB",
+        "artwork_mime": "VARCHAR(100)",
+        "artwork_source": "VARCHAR(32)",
+    }
+    for name, definition in missing_columns.items():
+        if name not in columns:
+            connection.execute(text(f"ALTER TABLE tracks ADD COLUMN {name} {definition}"))

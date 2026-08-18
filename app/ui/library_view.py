@@ -1,12 +1,16 @@
-from PySide6.QtCore import QEvent, Qt, Signal
+from PySide6.QtCore import QEvent, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QComboBox,
+    QDialog,
+    QDialogButtonBox,
     QFrame,
+    QFormLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
+    QMenu,
     QPushButton,
     QSpinBox,
     QStackedWidget,
@@ -30,7 +34,9 @@ class LibraryView(QWidget):
 
     preview_track_requested = Signal(object)
     track_selected = Signal(object)
-    COLUMNS = ("artist", "title", "album", "label", "genre", "bpm", "key", None, "duration", "rating")
+    dj_set_requested = Signal(object)
+    edit_metadata_requested = Signal(object)
+    COLUMNS = (None, "artist", "title", "album", "label", "genre", "bpm", "key", None, "duration", "rating")
 
     def __init__(self, library_service=None, history_service=None, settings_service=None):
         super().__init__()
@@ -39,7 +45,13 @@ class LibraryView(QWidget):
         self.settings_service = settings_service
         self._active_filters = {}
         self._last_error = None
+        self._current_page = 1
         self._rating_press_active = False
+        self._pending_search_text = ""
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(250)
+        self._search_timer.timeout.connect(self._run_scheduled_search)
 
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(16, 16, 16, 16)
@@ -57,7 +69,7 @@ class LibraryView(QWidget):
 
     def _build_heading(self):
         heading = QHBoxLayout()
-        heading.setSpacing(8)
+        heading.setSpacing(14)
         title_group = QVBoxLayout()
         title_group.setSpacing(2)
         title = QLabel("Biblioteca")
@@ -67,6 +79,30 @@ class LibraryView(QWidget):
         title_group.addWidget(title)
         title_group.addWidget(subtitle)
         heading.addLayout(title_group)
+        self.metrics = QHBoxLayout()
+        self.metrics.setSpacing(8)
+        self.metric_values = {}
+        for key, label in (
+            ("artists", "ARTISTAS"),
+            ("albums", "ALBUMES"),
+            ("genres", "GENEROS"),
+            ("energy", "ENERGIA PROM."),
+            ("duration", "DURACION"),
+        ):
+            card = QFrame()
+            card.setObjectName("libraryMetricCard")
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(11, 7, 11, 7)
+            card_layout.setSpacing(1)
+            caption = QLabel(label)
+            caption.setObjectName("libraryMetricCaption")
+            value = QLabel("-")
+            value.setObjectName("libraryMetricValue")
+            card_layout.addWidget(caption)
+            card_layout.addWidget(value)
+            self.metrics.addWidget(card)
+            self.metric_values[key] = value
+        heading.addLayout(self.metrics)
         heading.addStretch(1)
         self.counter = QLabel("Biblioteca: cargando...")
         self.counter.setObjectName("libraryCounter")
@@ -150,24 +186,32 @@ class LibraryView(QWidget):
     def _build_table_area(self):
         self.table = QTableView()
         self.table.setObjectName("libraryTable")
-        self.model = TrackTableModel([], self.library_service.load_more)
+        self.model = TrackTableModel([], self.library_service.load_more, update_metadata=getattr(self.library_service, "update_metadata", None))
         self.model.set_key_notation(self.key_notation.currentData())
         self.table.setModel(self.model)
         self.table.setSelectionBehavior(QTableView.SelectRows)
         self.table.setSelectionMode(QTableView.SingleSelection)
+        # Double click loads the track.  Inline edits stay explicit so a
+        # playback gesture can never commit a cell editor by accident.
+        # Editing is intentionally explicit: F2 and double-click must never
+        # alter a track.  The only entry points are the contextual action and
+        # Shift+click, both of which call table.edit() directly.
         self.table.setEditTriggers(QTableView.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.setSortingEnabled(False)
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.viewport().installEventFilter(self)
 
         header = self.table.horizontalHeader()
         header.setSectionsClickable(True)
         header.setSectionsMovable(True)
         header.setSectionResizeMode(QHeaderView.Interactive)
-        for section, width in enumerate((170, 180, 150, 130, 150, 80, 100, 80, 90, 130)):
+        header.setStretchLastSection(True)
+        for section, width in enumerate((58, 170, 180, 150, 130, 150, 80, 100, 80, 90, 130)):
             header.resizeSection(section, width)
+        self.table.verticalHeader().setDefaultSectionSize(42)
         header.sectionClicked.connect(self.sort_tracks)
 
         self.state_page = QFrame()
@@ -189,21 +233,37 @@ class LibraryView(QWidget):
         self.content_stack.addWidget(self.state_page)
         self.layout.addWidget(self.content_stack, 1)
 
+        self.pagination_bar = QFrame()
+        self.pagination_bar.setObjectName("libraryPagination")
+        pagination_layout = QHBoxLayout(self.pagination_bar)
+        pagination_layout.setContentsMargins(2, 2, 2, 2)
+        pagination_layout.setSpacing(2)
+        self.previous_page_button = QPushButton("‹")
+        self.previous_page_button.setAccessibleName("Pagina anterior")
+        self.previous_page_button.clicked.connect(lambda: self.go_to_page(self._current_page - 1))
+        self.next_page_button = QPushButton("›")
+        self.next_page_button.setAccessibleName("Pagina siguiente")
+        self.next_page_button.clicked.connect(lambda: self.go_to_page(self._current_page + 1))
+        self.pagination_layout = pagination_layout
+        pagination_layout.addWidget(self.previous_page_button)
+        pagination_layout.addStretch(1)
+        pagination_layout.addWidget(self.next_page_button)
+        self.layout.addWidget(self.pagination_bar)
+
     def _build_selection_actions(self):
         selection_bar = QFrame()
         selection_bar.setObjectName("librarySelectionBar")
         layout = QHBoxLayout(selection_bar)
-        layout.setContentsMargins(12, 8, 12, 8)
-        layout.setSpacing(8)
+        layout.setContentsMargins(8, 4, 8, 4)
         self.info_label = QLabel("Seleccioná una pista")
         self.info_label.setObjectName("librarySelectionInfo")
-        self.load_preview_button = QPushButton("Cargar en reproductor")
-        self.load_preview_button.setAccessibleName("Cargar pista seleccionada en reproductor")
-        self.load_preview_button.setToolTip("Carga la fila activa en la preescucha sin reproducirla")
-        self.load_preview_button.setEnabled(False)
-        self.load_preview_button.setVisible(False)
         layout.addWidget(self.info_label, 1)
-        layout.addWidget(self.load_preview_button)
+        self.create_dj_set_button = QPushButton("Crear DJ Set")
+        self.create_dj_set_button.setObjectName("libraryCreateDjSet")
+        self.create_dj_set_button.setAccessibleName("Crear DJ Set desde la pista seleccionada")
+        self.create_dj_set_button.setEnabled(False)
+        self.create_dj_set_button.clicked.connect(self.request_dj_set)
+        layout.addWidget(self.create_dj_set_button)
         self.layout.addWidget(selection_bar)
 
     def _load_key_notation_preference(self):
@@ -226,18 +286,19 @@ class LibraryView(QWidget):
                 self.info_label.setText("No se pudo guardar la preferencia de tonalidad")
 
     def _connect_signals(self):
-        self.search.textChanged.connect(self.filter_tracks)
+        self.search.textChanged.connect(self.schedule_search)
         self.filter_toggle_button.toggled.connect(self.filter_panel.setVisible)
         self.apply_filters_button.clicked.connect(self.apply_filters)
         self.clear_filters_button.clicked.connect(self.clear_filters)
         self.refresh_button.clicked.connect(self.refresh_tracks)
         self.key_notation.currentIndexChanged.connect(self._change_key_notation)
-        self.load_preview_button.clicked.connect(self.request_preview_load)
         self.model.rowsInserted.connect(self._after_rows_inserted)
         self.table.selectionModel().selectionChanged.connect(self.on_selection_changed)
         self.table.doubleClicked.connect(self._handle_table_double_click)
+        self.table.customContextMenuRequested.connect(self._show_track_context_menu)
 
     def load_tracks(self):
+        self._current_page = 1
         self._show_loading("Cargando biblioteca", "Preparando resultados…")
         try:
             tracks, has_more = self.library_service.load_library()
@@ -247,6 +308,7 @@ class LibraryView(QWidget):
         self._present_result(tracks, has_more)
 
     def refresh_tracks(self):
+        self._current_page = 1
         self._show_loading("Actualizando biblioteca", "Actualizando los resultados actuales…")
         try:
             tracks, has_more = self.library_service.refresh()
@@ -256,6 +318,7 @@ class LibraryView(QWidget):
         self._present_result(tracks, has_more)
 
     def filter_tracks(self, text):
+        self._current_page = 1
         self._show_loading("Buscando", "Actualizando los resultados de búsqueda…")
         try:
             tracks, has_more = self.library_service.search(text)
@@ -264,7 +327,17 @@ class LibraryView(QWidget):
             return
         self._present_result(tracks, has_more, query_active=bool(text) or bool(self._active_filters))
 
+    def schedule_search(self, text):
+        """Wait briefly for typing to stop before querying SQLite."""
+        self._pending_search_text = text
+        self._search_timer.start()
+
+    def _run_scheduled_search(self):
+        self.filter_tracks(self._pending_search_text)
+
     def apply_filters(self):
+        self._current_page = 1
+        self._search_timer.stop()
         filters = self._collect_filters()
         self._show_loading("Aplicando filtros", "Actualizando los resultados filtrados…")
         try:
@@ -276,6 +349,8 @@ class LibraryView(QWidget):
         self._present_result(tracks, has_more, query_active=bool(self.search.text()) or bool(filters))
 
     def clear_filters(self):
+        self._current_page = 1
+        self._search_timer.stop()
         self.search.blockSignals(True)
         self.search.clear()
         self.search.blockSignals(False)
@@ -328,13 +403,13 @@ class LibraryView(QWidget):
             self.info_label.setText("No se pudo actualizar el rating")
             return
         track.rating = getattr(updated, "rating", rating)
-        index = self.model.index(row, 9)
+        index = self.model.index(row, 10)
         self.model.dataChanged.emit(index, index, [Qt.DisplayRole])
 
     def eventFilter(self, watched, event):
         if watched is self.table.viewport() and event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
             index = self.table.indexAt(event.position().toPoint())
-            if index.isValid() and index.column() == 9:
+            if index.isValid() and index.column() == 10:
                 bounds = self.table.visualRect(index)
                 stars_width = self.table.fontMetrics().horizontalAdvance("★★★★★")
                 stars_left = bounds.center().x() - stars_width / 2
@@ -355,6 +430,7 @@ class LibraryView(QWidget):
 
     def _present_result(self, tracks, has_more, query_active=None):
         self.model.set_page(tracks, has_more)
+        self._update_metrics(tracks)
         self.update_counter()
         if tracks:
             self.content_stack.setCurrentWidget(self.table)
@@ -382,6 +458,62 @@ class LibraryView(QWidget):
         # rows already present in the model.
         total = max(total, loaded)
         self.counter.setText(f"Biblioteca: {loaded} de {total} pistas cargadas")
+        self._render_pagination(total)
+
+    def _render_pagination(self, total):
+        page_size = max(1, int(getattr(self.library_service, "page_size", max(1, self.model.rowCount()))))
+        page_count = max(1, (total + page_size - 1) // page_size)
+        self._current_page = min(self._current_page, page_count)
+        self.previous_page_button.setEnabled(self._current_page > 1)
+        self.next_page_button.setEnabled(self._current_page < page_count)
+        while self.pagination_layout.count() > 2:
+            item = self.pagination_layout.takeAt(1)
+            if item.widget() is not None:
+                item.widget().deleteLater()
+        for page in self._visible_page_numbers(page_count):
+            button = QPushButton(str(page))
+            button.setObjectName("libraryPageButton")
+            button.setCheckable(True)
+            button.setChecked(page == self._current_page)
+            button.clicked.connect(lambda _checked=False, value=page: self.go_to_page(value))
+            self.pagination_layout.insertWidget(self.pagination_layout.count() - 1, button)
+        self.pagination_bar.setVisible(page_count > 1)
+
+    def _visible_page_numbers(self, page_count):
+        if page_count <= 7:
+            return tuple(range(1, page_count + 1))
+        first = max(1, min(self._current_page - 2, page_count - 4))
+        return tuple(range(first, min(page_count, first + 4) + 1))
+
+    def go_to_page(self, page_number):
+        if page_number == self._current_page or page_number < 1:
+            return
+        loader = getattr(self.library_service, "load_page", None)
+        if not callable(loader):
+            return
+        try:
+            tracks, has_more = loader(page_number)
+        except Exception as error:
+            self._show_error(error)
+            return
+        self._current_page = page_number
+        self._present_result(tracks, has_more, query_active=bool(self.search.text()) or bool(self._active_filters))
+
+    def _update_metrics(self, tracks):
+        """Render a factual summary from the rows already visible in the table."""
+        artists = {str(getattr(track, "artist", "")).strip() for track in tracks if getattr(track, "artist", None)}
+        albums = {str(getattr(track, "album", "")).strip() for track in tracks if getattr(track, "album", None)}
+        genres = {str(getattr(track, "genre", "")).strip() for track in tracks if getattr(track, "genre", None)}
+        energies = [float(getattr(track, "energy", 0) or 0) for track in tracks if getattr(track, "energy", None) is not None]
+        duration = sum(float(getattr(track, "duration", 0) or 0) for track in tracks)
+
+        self.metric_values["artists"].setText(str(len(artists)))
+        self.metric_values["albums"].setText(str(len(albums)))
+        self.metric_values["genres"].setText(str(len(genres)))
+        self.metric_values["energy"].setText(f"{sum(energies) / len(energies):.1f}" if energies else "-")
+        hours, remainder = divmod(int(duration), 3600)
+        minutes = remainder // 60
+        self.metric_values["duration"].setText(f"{hours}h {minutes:02d}m" if hours else f"{minutes}m")
 
     def _show_loading(self, title, message):
         self._show_state(title, message)
@@ -390,7 +522,6 @@ class LibraryView(QWidget):
         self._last_error = error
         self._show_state("No se pudo cargar la biblioteca", "Reintentá actualizar los resultados.")
         self.info_label.setText("La biblioteca no está disponible temporalmente")
-        self.load_preview_button.setEnabled(False)
 
     def _show_state(self, title, message):
         self.state_title.setText(title)
@@ -406,23 +537,20 @@ class LibraryView(QWidget):
         indexes = selected.indexes()
         if not indexes:
             self.info_label.setText("Seleccioná una pista")
-            self.load_preview_button.setEnabled(False)
+            self.create_dj_set_button.setEnabled(False)
             return
         track = self.model.track_at(indexes[0].row())
         if track:
             self.history_service.record_track_selected(track.id)
             self.track_selected.emit(track)
-            self.load_preview_button.setEnabled(
-                bool(getattr(track, "id", None) is not None and getattr(track, "filepath", None))
-            )
+            self.create_dj_set_button.setEnabled(True)
             self.info_label.setText(
                 f"{track.artist or 'Desconocido'} - {track.title or 'Sin título'}"
             )
 
     def set_preview_player_available(self, available):
-        self.load_preview_button.setVisible(bool(available))
-        if not available:
-            self.load_preview_button.setEnabled(False)
+        # Loading is performed by double-click; no redundant toolbar control.
+        return None
 
     def request_preview_load(self):
         """Emit the active model item; consumers do not re-query the library."""
@@ -433,9 +561,61 @@ class LibraryView(QWidget):
             return
         self.preview_track_requested.emit(track)
 
+    def request_dj_set(self):
+        """Request a read-only DJ Set proposal for the active library track."""
+        index = self.table.currentIndex()
+        track = self.model.track_at(index.row()) if index.isValid() else None
+        if track is None or not isinstance(getattr(track, "id", None), int):
+            self.info_label.setText("Seleccioná una pista válida para crear un DJ Set")
+            return
+        self.dj_set_requested.emit(track)
+
     def _handle_table_double_click(self, index):
         """Use the same internal load flow as the explicit button action."""
         if not index.isValid():
             return
         self.table.setCurrentIndex(index)
         self.request_preview_load()
+
+    def _show_track_context_menu(self, position):
+        index = self.table.indexAt(position)
+        track = self.model.track_at(index.row()) if index.isValid() else None
+        if track is None:
+            return
+        self.table.setCurrentIndex(index)
+        menu = QMenu(self)
+        status_action = menu.addAction("Edici\u00f3n en lista: en revisi\u00f3n")
+        status_action.setEnabled(False)
+        menu.exec(self.table.viewport().mapToGlobal(position))
+
+    def _open_inline_metadata_editor(self, track):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Editar metadata")
+        dialog.setModal(True)
+        form = QFormLayout(dialog)
+        fields = {}
+        for label, name in (("Título", "title"), ("Artista", "artist"), ("Álbum", "album"), ("Sello", "label"), ("Género", "genre"), ("BPM", "bpm"), ("Tonalidad", "key"), ("Energía", "energy")):
+            if name == "bpm":
+                editor = QDoubleSpinBox(); editor.setRange(0, 400); editor.setDecimals(1); editor.setValue(float(getattr(track, name, 0) or 0))
+            elif name == "energy":
+                editor = QSpinBox(); editor.setRange(0, 100); editor.setValue(int(getattr(track, name, 0) or 0))
+            else:
+                editor = QLineEdit(str(getattr(track, name, "") or ""))
+            fields[name] = editor
+            form.addRow(label, editor)
+        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        form.addRow(buttons)
+        if dialog.exec() != QDialog.Accepted:
+            return
+        values = {name: (editor.value() if isinstance(editor, (QDoubleSpinBox, QSpinBox)) else editor.text().strip() or None) for name, editor in fields.items()}
+        values["title"] = values["title"] or getattr(track, "title", "")
+        values["artist"] = values["artist"] or getattr(track, "artist", "")
+        try:
+            self.library_service.update_metadata(track.id, values)
+        except Exception:
+            self.info_label.setText("No se pudo guardar la metadata")
+            return
+        self.refresh_tracks()
+        self.info_label.setText("Metadata actualizada")

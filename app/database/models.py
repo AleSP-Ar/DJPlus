@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Float, ForeignKey, Index, Integer, String, Table, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Float, ForeignKey, Index, Integer, LargeBinary, String, Table, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -197,6 +197,9 @@ class Track(Base):
     duration = Column(Float, nullable=True)
     bitrate = Column(Integer, nullable=True)
     sample_rate = Column(Integer, nullable=True)
+    artwork_data = Column(LargeBinary, nullable=True)
+    artwork_mime = Column(String(100), nullable=True)
+    artwork_source = Column(String(32), nullable=True)
 
     file_hash = Column(String, nullable=True)
     status = Column(String, default="ok")

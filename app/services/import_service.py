@@ -24,7 +24,6 @@ class ImportService:
         self._notify(job.id, on_progress)
         self._emit("started", job.id, on_event)
 
-        discovered = []
         for event in self.scanner_service.discover(
             root_path,
             cancel_requested=lambda: self._should_cancel(job.id, cancel_requested),
@@ -40,21 +39,16 @@ class ImportService:
                 self._emit("failed", job.id, on_event, item=item, filepath=event.filepath, error_message=event.error_message)
                 continue
 
-            self._emit("file_found", job.id, on_event, filepath=event.filepath)
-            discovered.append(event.filepath)
-
-        for filepath in discovered:
-            if self._should_cancel(job.id, cancel_requested):
-                self.queue.request_cancellation(job.id)
-                self._notify(job.id, on_progress)
-                self._emit("cancelled", job.id, on_event)
-                break
-            item = self.queue.enqueue_for_processing(job.id, filepath)
+            # Persist the discovery before notifying listeners.  A listener can
+            # request cancellation synchronously, but that must not discard the
+            # file whose discovery it has already observed.
+            item = self.queue.enqueue_for_processing(job.id, event.filepath)
             if item is None:
                 self.queue.request_cancellation(job.id)
                 self._notify(job.id, on_progress)
                 self._emit("cancelled", job.id, on_event)
                 break
+            self._emit("file_found", job.id, on_event, item=item, filepath=event.filepath)
         if not self.queue.is_cancelled(job.id):
             self._notify(job.id, on_progress)
             for item in self.queue.repository.list_items(job.id):
@@ -102,7 +96,6 @@ class ImportService:
 
     def _process_item(self, job_id, item, on_event):
         try:
-            self._emit("processing_started", job_id, on_event, item=item, filepath=item.filepath)
             metadata = self.metadata_service.read(item.filepath)
             self._emit("metadata_processed", job_id, on_event, item=item, filepath=item.filepath)
             result = self.track_import_service.process(item.id, metadata)

@@ -75,6 +75,9 @@ class TrackRepository:
             duration=metadata.duration,
             bitrate=metadata.bitrate,
             sample_rate=metadata.sample_rate,
+            artwork_data=getattr(metadata, "artwork_data", None),
+            artwork_mime=getattr(metadata, "artwork_mime", None),
+            artwork_source="embedded" if getattr(metadata, "artwork_data", None) else None,
             import_file_size=file_size,
             import_file_modified_at=modified_at,
         )
@@ -92,6 +95,10 @@ class TrackRepository:
         track.duration = metadata.duration
         track.bitrate = metadata.bitrate
         track.sample_rate = metadata.sample_rate
+        if getattr(metadata, "artwork_data", None):
+            track.artwork_data = metadata.artwork_data
+            track.artwork_mime = getattr(metadata, "artwork_mime", None)
+            track.artwork_source = "embedded"
         track.import_file_size = file_size
         track.import_file_modified_at = modified_at
         self._finish(commit)

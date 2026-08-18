@@ -35,6 +35,7 @@ class _Playlists:
     def rename_playlist(self, ident,name): item=next(item for item in self.items if item.id==ident); item.name=name; return item
     def delete_playlist(self,ident): self.items=[item for item in self.items if item.id!=ident]
     def count_tracks(self,_ident): return 0
+    def list_tracks(self, _ident): return ()
     def close(self): pass
 
 class CollectionPlaylistPanelUiTests(unittest.TestCase):
@@ -59,3 +60,23 @@ class CollectionPlaylistPanelUiTests(unittest.TestCase):
             with patch("app.ui.playlist_panel.confirm_destructive", return_value=True): panel.delete_playlist()
             self.assertEqual(panel.playlist_list.count(),0)
         finally: panel.close()
+
+    def test_playlist_energy_sequence_uses_the_service_order_without_writing(self):
+        service = _Playlists()
+        service.list_tracks = lambda _ident: (
+            SimpleNamespace(artist="Artist A", title="Warmup", bpm=118, key="8A", energy=25, duration=240),
+            SimpleNamespace(artist="Artist B", title="Peak", bpm=132, key="9A", energy=90, duration=360),
+        )
+        panel = PlaylistPanel(service)
+        try:
+            panel.name_input.setText("Set"); panel.create_playlist()
+            self.assertFalse(panel.energy_section.isHidden())
+            self.assertEqual(panel.energy_segments.count(), 2)
+            first = panel.energy_segments.itemAt(0).widget()
+            second = panel.energy_segments.itemAt(1).widget()
+            self.assertIn("Warmup", first.accessibleName())
+            self.assertIn("Peak", second.accessibleName())
+            self.assertEqual(first.property("energyBand"), "low")
+            self.assertEqual(second.property("energyBand"), "peak")
+        finally:
+            panel.close()

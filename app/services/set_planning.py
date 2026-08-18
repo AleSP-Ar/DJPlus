@@ -106,14 +106,24 @@ class SetPlanningEngine:
         current = query.initial_track
         remaining = {track.id: track for track in query.candidates if track.id != current.id}
         while len(tracks) < query.target_track_count and remaining:
-            ranked = self._recommendation_service.recommend(RecommendationQueryDTO(current, tuple(remaining.values()), len(remaining)))
+            ranked = self._recommendation_service.recommend(
+                RecommendationQueryDTO(current, tuple(remaining.values()), min(100, len(remaining)))
+            )
             chosen = next((item for item in ranked if self._valid_transition(current, remaining[item.candidate_track_id]) and (
                 transition_validator(current, remaining[item.candidate_track_id], len(tracks) + 1) if transition_validator else True
             )), None)
             if chosen is None:
                 break
             current = remaining.pop(chosen.candidate_track_id)
-            tracks.append(SetPlanTrackDTO(len(tracks) + 1, current.id, chosen.score, chosen.confidence, chosen.reasons))
+            reason_order = {"bpm": 0, "key": 1, "genre": 2, "energy": 3, "history": 4}
+            reasons = tuple(sorted(
+                (
+                    reason for reason in chosen.reasons
+                    if reason.criterion != "genre" or "no disponible" not in reason.explanation.casefold()
+                ),
+                key=lambda reason: reason_order[reason.criterion],
+            ))
+            tracks.append(SetPlanTrackDTO(len(tracks) + 1, current.id, chosen.score, chosen.confidence, reasons))
         partial = len(tracks) < query.target_track_count
         explanation = (
             f"Plan parcial: {len(tracks)} de {query.target_track_count} pistas; no hay transiciones validas."

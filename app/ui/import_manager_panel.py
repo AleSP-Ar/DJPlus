@@ -27,7 +27,7 @@ class ImportManagerPanel(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
         self.setObjectName("importManagerPanel")
-        self.setStyleSheet("QFrame#importSection { background:#1f2937; border:1px solid #374151; border-radius:8px; } QLabel#importTitle { font-size:18px; font-weight:600; } QLabel#importHint { color:#9ca3af; } QPushButton#importPrimary { background:#2563eb; color:white; font-weight:600; }")
+        self.setStyleSheet("QFrame#importSection { background:#10182A; border:1px solid #253550; border-radius:9px; } QLabel#importTitle { color:#F1F5FF; font-size:19px; font-weight:700; } QLabel#importHint { color:#8FA1BD; } QPushButton#importPrimary { background:#6259E8; border:1px solid #817AFF; color:white; font-weight:600; }")
 
         title = QLabel("Importar música"); title.setObjectName("importTitle"); layout.addWidget(title)
         hint = QLabel("Elegí una carpeta para analizar sus archivos y agregarlos a tu biblioteca."); hint.setObjectName("importHint"); layout.addWidget(hint)

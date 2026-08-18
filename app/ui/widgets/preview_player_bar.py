@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtWidgets import QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QLayout, QPushButton, QSlider, QVBoxLayout, QWidget
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QLabel, QLayout, QPushButton, QSlider, QVBoxLayout, QWidget
 
 from app.services.preview_player import PreviewPlayerState, PreviewTrackDTO
 
@@ -33,30 +34,31 @@ class PreviewPlayerBar(QWidget):
         self.setAccessibleName("Controles de preescucha")
         self.setToolTip("Controles de preescucha local")
         self.setMinimumWidth(0)
-        self.setMinimumHeight(112)
+        self.setMinimumHeight(86)
         self._build_ui()
         self._service_event.connect(self._apply_service_event)
         self._unsubscribe = self._service.subscribe(self._receive_service_event)
-        self.refresh_devices()
         self._apply_snapshot(self._service.snapshot())
 
     def _build_ui(self):
         self.setStyleSheet(
             """
-            QWidget#previewPlayerBar { background: #1f2937; border: 1px solid #374151; border-radius: 8px; }
-            QFrame#previewTrackBlock { background: #111827; border-radius: 6px; padding: 2px; }
-            QLabel#previewTrackLabel { color: #f9fafb; font-weight: 600; }
-            QLabel#previewTrackHint, QLabel#previewControlLabel { color: #9ca3af; }
+            QWidget#previewPlayerBar { background: #09090C; border: 1px solid #3D254C; border-radius: 10px; }
+            QFrame#previewTrackBlock { background: #120D18; border: 1px solid #4A2864; border-radius: 7px; padding: 2px; }
+            QLabel#previewTrackLabel { color: #F4F7FF; font-weight: 700; }
+            QLabel#previewTrackHint, QLabel#previewControlLabel { color: #B69CC9; }
             QLabel#previewState { border-radius: 9px; padding: 2px 8px; font-weight: 600; }
-            QLabel#previewState[previewState="empty"], QLabel#previewState[previewState="closed"] { color: #cbd5e1; background: #334155; }
-            QLabel#previewState[previewState="loading"] { color: #fef3c7; background: #92400e; }
-            QLabel#previewState[previewState="ready"], QLabel#previewState[previewState="stopped"], QLabel#previewState[previewState="paused"], QLabel#previewState[previewState="ended"] { color: #dbeafe; background: #1e40af; }
-            QLabel#previewState[previewState="playing"] { color: #dcfce7; background: #166534; }
-            QLabel#previewState[previewState="error"], QLabel#previewState[previewState="degraded"] { color: #fee2e2; background: #991b1b; }
-            QLabel#previewError { color: #fca5a5; }
-            QPushButton#previewPlayButton { font-weight: 600; min-width: 92px; }
-            QSlider::groove:horizontal { height: 4px; border-radius: 2px; background: #475569; }
-            QSlider::handle:horizontal { width: 14px; margin: -5px 0; border-radius: 7px; background: #60a5fa; }
+            QLabel#previewState[previewState="empty"], QLabel#previewState[previewState="closed"] { color: #DCC8FF; background: #20132A; }
+            QLabel#previewState[previewState="loading"] { color: #FFE3A1; background: #4D3419; }
+            QLabel#previewState[previewState="ready"], QLabel#previewState[previewState="stopped"], QLabel#previewState[previewState="paused"], QLabel#previewState[previewState="ended"] { color: #F0D5FF; background: #4A126D; }
+            QLabel#previewState[previewState="playing"] { color: #62FFE0; background: #12483E; }
+            QLabel#previewState[previewState="error"], QLabel#previewState[previewState="degraded"] { color: #FFD1D8; background: #62223A; }
+            QLabel#previewError { color: #FF9DAC; }
+            QPushButton#previewPlayButton { color: #FFFFFF; background: #941DFF; border: 1px solid #F15CFF; border-radius: 18px; font-weight: 700; min-width: 92px; }
+            QPushButton#previewPlayButton:hover:!disabled { background: #C529FF; }
+            QSlider::groove:horizontal { height: 5px; border-radius: 2px; background: #2C1D37; }
+            QSlider::sub-page:horizontal { background: #C322FF; border-radius: 2px; }
+            QSlider::handle:horizontal { width: 14px; margin: -5px 0; border-radius: 7px; background: #2FFFE5; }
             """
         )
         root = QVBoxLayout(self)
@@ -66,6 +68,11 @@ class PreviewPlayerBar(QWidget):
 
         title_row = QHBoxLayout()
         title_row.setSpacing(10)
+        self.artwork_label = QLabel("♪")
+        self.artwork_label.setObjectName("previewArtwork")
+        self.artwork_label.setFixedSize(52, 52)
+        self.artwork_label.setAlignment(Qt.AlignCenter)
+        title_row.addWidget(self.artwork_label)
         track_block = QFrame()
         track_block.setObjectName("previewTrackBlock")
         track_block.setMinimumWidth(0)
@@ -81,10 +88,11 @@ class PreviewPlayerBar(QWidget):
         title_row.addWidget(track_block, 1)
         root.addLayout(title_row)
 
-        self.track_hint_label = QLabel("Cargá una pista desde Biblioteca para preescucharla.")
+        self.track_hint_label = QLabel("")
         self.track_hint_label.setObjectName("previewTrackHint")
         self.track_hint_label.setWordWrap(True)
         self.track_hint_label.setMinimumWidth(0)
+        self.track_hint_label.setVisible(False)
         root.addWidget(self.track_hint_label)
 
         controls_container = QVBoxLayout()
@@ -120,11 +128,6 @@ class PreviewPlayerBar(QWidget):
         self.volume_slider.setAccessibleName("Volumen de preescucha")
         self.volume_slider.setToolTip("Volumen privado de la preescucha")
         self.volume_slider.setRange(0, 100)
-        self.device_label = QLabel("Salida")
-        self.device_label.setObjectName("previewControlLabel")
-        self.device_combo = QComboBox()
-        self.device_combo.setAccessibleName("Dispositivo de salida")
-        self.device_combo.setToolTip("Seleccionar salida de audio de preescucha")
         self._arrange_controls(False)
 
         self.error_label = QLabel("")
@@ -140,12 +143,10 @@ class PreviewPlayerBar(QWidget):
         self.position_slider.sliderReleased.connect(self._finish_seek)
         self.volume_slider.valueChanged.connect(self._set_volume)
         self.volume_slider.sliderReleased.connect(self._save_volume_preferences)
-        self.device_combo.currentIndexChanged.connect(self._select_device)
         self.setFocusPolicy(Qt.StrongFocus)
         QWidget.setTabOrder(self.play_button, self.stop_button)
         QWidget.setTabOrder(self.stop_button, self.position_slider)
         QWidget.setTabOrder(self.position_slider, self.volume_slider)
-        QWidget.setTabOrder(self.volume_slider, self.device_combo)
 
     def _arrange_controls(self, compact):
         """Keep every control available while moving secondary controls below on narrow windows."""
@@ -163,21 +164,13 @@ class PreviewPlayerBar(QWidget):
         if compact:
             self.controls.addWidget(self.volume_label, 1, 0)
             self.controls.addWidget(self.volume_slider, 1, 1, 1, 2)
-            self.controls.addWidget(self.device_label, 1, 3)
-            self.controls.addWidget(self.device_combo, 1, 4)
             self.volume_slider.setMinimumWidth(80)
             self.volume_slider.setMaximumWidth(16777215)
-            self.device_combo.setMinimumWidth(130)
-            self.device_combo.setMaximumWidth(16777215)
         else:
             self.controls.addWidget(self.volume_label, 0, 5)
             self.controls.addWidget(self.volume_slider, 0, 6)
-            self.controls.addWidget(self.device_label, 0, 7)
-            self.controls.addWidget(self.device_combo, 0, 8)
             self.volume_slider.setMinimumWidth(80)
             self.volume_slider.setMaximumWidth(110)
-            self.device_combo.setMinimumWidth(180)
-            self.device_combo.setMaximumWidth(280)
 
     def resizeEvent(self, event):
         self._arrange_controls(event.size().width() < self._COMPACT_WIDTH)
@@ -193,26 +186,6 @@ class PreviewPlayerBar(QWidget):
         except Exception:
             self._apply_snapshot(self._service.snapshot())
             self.error_label.setText("No se pudo cargar la pista seleccionada.")
-
-    def refresh_devices(self):
-        if self._closed:
-            return
-        self._updating = True
-        try:
-            self.device_combo.clear()
-            self.device_combo.addItem("Usar salida predeterminada", "__default__")
-            for device in self._service.list_output_devices():
-                label = device.description[:100] or "Salida sin nombre"
-                if device.is_default:
-                    label += " (predeterminada)"
-                if not device.is_available:
-                    label += " (no disponible)"
-                self.device_combo.addItem(label, device.device_id)
-        except Exception:
-            self.device_combo.clear()
-            self.device_combo.addItem("Sin salida de audio", "")
-        finally:
-            self._updating = False
 
     def toggle_play_pause(self):
         if self._closed:
@@ -264,22 +237,6 @@ class PreviewPlayerBar(QWidget):
         except Exception:
             pass
 
-    def _select_device(self, _index):
-        if self._updating or self._closed:
-            return
-        device_id = self.device_combo.currentData()
-        try:
-            if device_id == "__default__":
-                self._service.use_default_output_device()
-            elif device_id:
-                self._service.select_output_device(device_id)
-            else:
-                return
-            self._service.save_preferences()
-        except Exception:
-            self.error_label.setText("La salida seleccionada no está disponible.")
-            self.refresh_devices()
-
     def _receive_service_event(self, event, snapshot):
         if not self._closed:
             self._service_event.emit(event, snapshot)
@@ -295,11 +252,9 @@ class PreviewPlayerBar(QWidget):
         track = snapshot.track
         title = track.title if track and track.title else "Pista sin título"
         artist = track.artist if track and track.artist else "Artista desconocido"
+        self._set_artwork(None if track is None else getattr(track, "artwork_data", None))
         self.track_label.setText("Sin pista cargada" if track is None else f"{artist} — {title}")
-        self.track_hint_label.setText(
-            "Cargá una pista desde Biblioteca para preescucharla."
-            if track is None else "Carga explícita: la reproducción nunca comienza automáticamente."
-        )
+        self.track_hint_label.setText("")
         duration = max(0, snapshot.duration_ms)
         if not self._dragging:
             self._updating = True
@@ -322,7 +277,15 @@ class PreviewPlayerBar(QWidget):
             self.error_label.setText("La preescucha no está disponible." if snapshot.error == "backend_unavailable" else "Ocurrió un error de reproducción.")
         else:
             self.error_label.setText("")
-        self._select_current_device(snapshot.output_device_id)
+
+    def _set_artwork(self, data):
+        pixmap = QPixmap()
+        if isinstance(data, bytes) and data and pixmap.loadFromData(data):
+            self.artwork_label.setPixmap(pixmap.scaled(self.artwork_label.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation))
+            self.artwork_label.setText("")
+        else:
+            self.artwork_label.setPixmap(QPixmap())
+            self.artwork_label.setText("♪")
 
     def _set_visual_state(self, snapshot):
         state_key = "degraded" if not snapshot.output_available else snapshot.state.value.lower()
@@ -330,13 +293,6 @@ class PreviewPlayerBar(QWidget):
         self.style().unpolish(self.state_label)
         self.style().polish(self.state_label)
         self.state_label.setText(self._state_text(snapshot))
-
-    def _select_current_device(self, device_id):
-        self._updating = True
-        index = self.device_combo.findData(device_id) if device_id else 0
-        if index >= 0:
-            self.device_combo.setCurrentIndex(index)
-        self._updating = False
 
     @staticmethod
     def _state_text(snapshot):

@@ -300,11 +300,15 @@ class FFmpegAudioDecoder:
         except subprocess.TimeoutExpired as error:
             self._stop_process(process)
             raise FFmpegProcessError("FFmpeg excedio el timeout de sondeo") from error
-        safe_stderr = self._safe_stderr(stderr, str(path))
+        raw_stderr = (stderr or b"").decode("utf-8", "replace")
+        safe_stderr = self._safe_stderr(raw_stderr, str(path))
         if process.returncode not in {0, None}:
             raise FFmpegProcessError("FFmpeg no pudo inspeccionar el audio", safe_stderr)
-        sample_rate, channels = self._parse_stream(safe_stderr)
-        duration = self._parse_duration(safe_stderr)
+        try:
+            sample_rate, channels = self._parse_stream(raw_stderr)
+        except FFmpegProcessError as error:
+            raise FFmpegProcessError("FFmpeg no informo sample rate y canales", safe_stderr) from error
+        duration = self._parse_duration(raw_stderr)
         return DecodedAudioInfoDTO(
             str(path), audio_format, sample_rate, channels, 2,
             int(round(duration * sample_rate)) if duration is not None else 0,

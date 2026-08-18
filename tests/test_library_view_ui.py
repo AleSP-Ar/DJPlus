@@ -107,6 +107,7 @@ class LibraryViewUiTests(unittest.TestCase):
         self.assertFalse(self.view.filter_panel.isHidden())
 
         self.view.search.setText("artist")
+        QTest.qWait(300)
         self.assertEqual(self.library.calls[-1], ("search", "artist"))
 
         self.view.genre_filter.setText("house")
@@ -130,6 +131,7 @@ class LibraryViewUiTests(unittest.TestCase):
         try:
             self.assertEqual(empty.state_title.text(), "Biblioteca vacía")
             empty.search.setText("missing")
+            QTest.qWait(300)
             self.assertEqual(empty.state_title.text(), "Sin resultados")
             empty.library_service.fail_refresh = True
             empty.refresh_tracks()
@@ -138,7 +140,7 @@ class LibraryViewUiTests(unittest.TestCase):
             empty.close()
 
     def test_sort_and_incremental_loading_keep_existing_model_contract(self):
-        self.view.sort_tracks(1)
+        self.view.sort_tracks(2)
         self.assertEqual(self.library.calls[-1][0:2], ("sort", "title"))
         self.assertTrue(self.view.model.canFetchMore())
         self.view.model.fetchMore()
@@ -152,10 +154,10 @@ class LibraryViewUiTests(unittest.TestCase):
         self.assertNotIn("Géneros secundarios", headers)
         self.assertNotIn("Estilos", headers)
         self.assertIn("Sello", headers)
-        self.assertEqual(self.view.model.data(self.view.model.index(0, 3), Qt.DisplayRole), "Demo Label")
-        self.assertEqual(self.view.model.data(self.view.model.index(0, 4), Qt.DisplayRole), "House")
+        self.assertEqual(self.view.model.data(self.view.model.index(0, 4), Qt.DisplayRole), "Demo Label")
+        self.assertEqual(self.view.model.data(self.view.model.index(0, 5), Qt.DisplayRole), "House")
 
-        rating_index = self.view.model.index(0, 9)
+        rating_index = self.view.model.index(0, 10)
         self.view.show()
         self.application.processEvents()
         self.view.table.scrollTo(rating_index)
@@ -188,7 +190,6 @@ class LibraryViewUiTests(unittest.TestCase):
 
         self.assertEqual(self.history.selected, [1])
         self.assertEqual(selected, [self.library.rows[0]])
-        self.assertTrue(self.view.load_preview_button.isEnabled())
         self.assertEqual(emitted, [])
 
     def test_double_click_loads_the_selected_track_using_the_same_flow(self):
@@ -213,9 +214,17 @@ class LibraryViewUiTests(unittest.TestCase):
         self.application.processEvents()
 
         self.assertEqual(self.history.selected, [1])
-        self.assertTrue(self.view.load_preview_button.isEnabled())
         self.view.request_preview_load()
         self.assertEqual(emitted, [self.library.rows[0]])
+
+    def test_selected_track_can_explicitly_request_a_read_only_dj_set(self):
+        requested = []
+        self.view.dj_set_requested.connect(requested.append)
+        self.view.table.setCurrentIndex(self.view.model.index(0, 0))
+        self.application.processEvents()
+        self.assertTrue(self.view.create_dj_set_button.isEnabled())
+        self.view.create_dj_set_button.click()
+        self.assertEqual(requested, [self.library.rows[0]])
 
 
 if __name__ == "__main__":  # pragma: no cover

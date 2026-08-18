@@ -58,7 +58,7 @@ class TrackMetadataPanel(QWidget):
 
     def _build_ui(self):
         self.setObjectName("metadataPanel")
-        self.setStyleSheet("QFrame#metadataSection { background:#1f2937; border:1px solid #374151; border-radius:8px; } QLabel#metadataTitle { font-size:18px; font-weight:600; } QLabel#metadataStep { color:#93c5fd; font-weight:600; } QLabel#metadataHint { color:#9ca3af; } QPushButton#metadataPrimary { background:#2563eb; color:white; font-weight:600; }")
+        self.setStyleSheet("QFrame#metadataSection { background:#10182A; border:1px solid #253550; border-radius:9px; } QLabel#metadataTitle { color:#F1F5FF; font-size:19px; font-weight:700; } QLabel#metadataStep { color:#AFA9FF; font-weight:700; } QLabel#metadataHint { color:#8FA1BD; } QPushButton#metadataPrimary { background:#6259E8; border:1px solid #817AFF; color:white; font-weight:600; }")
         layout = QVBoxLayout(self); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(12)
         title = QLabel("Editar metadata"); title.setObjectName("metadataTitle"); layout.addWidget(title)
         hint = QLabel("Seleccioná una o varias pistas, revisá los cambios y confirmá sólo después de la vista previa."); hint.setObjectName("metadataHint"); hint.setWordWrap(True); layout.addWidget(hint)

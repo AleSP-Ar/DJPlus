@@ -21,6 +21,8 @@ class TrackMetadata:
     duration: float | None
     bitrate: int | None
     sample_rate: int | None
+    artwork_data: bytes | None = None
+    artwork_mime: str | None = None
 
 
 class MetadataService:
@@ -40,6 +42,8 @@ class MetadataService:
             duration=self._number(getattr(info, "length", None)),
             bitrate=self._integer(getattr(info, "bitrate", None)),
             sample_rate=self._integer(getattr(info, "sample_rate", None)),
+            artwork_data=embedded.artwork_data,
+            artwork_mime=embedded.artwork_mime,
         )
 
     def read_embedded(self, filepath, *, path=None, audio=None):
@@ -58,6 +62,8 @@ class MetadataService:
             duration=None,
             bitrate=None,
             sample_rate=None,
+            artwork_data=self._artwork_data(tags),
+            artwork_mime=self._artwork_mime(tags),
         )
 
     @staticmethod
@@ -119,3 +125,24 @@ class MetadataService:
             return int(value)
         except (TypeError, ValueError):
             return None
+
+    @staticmethod
+    def _artwork_frame(tags):
+        for key, value in getattr(tags, "items", lambda: ())():
+            frame_id = getattr(value, "FrameID", "")
+            if frame_id == "APIC" or str(key).upper().startswith("APIC"):
+                data = getattr(value, "data", None)
+                if isinstance(data, bytes) and data:
+                    return value
+        return None
+
+    @classmethod
+    def _artwork_data(cls, tags):
+        frame = cls._artwork_frame(tags)
+        return getattr(frame, "data", None) if frame is not None else None
+
+    @classmethod
+    def _artwork_mime(cls, tags):
+        frame = cls._artwork_frame(tags)
+        value = getattr(frame, "mime", None) if frame is not None else None
+        return str(value).strip() if value else None

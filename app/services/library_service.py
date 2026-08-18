@@ -36,6 +36,15 @@ class LibraryService:
             self.offset = next_offset
         return rows, has_more
 
+    def load_page(self, page_number):
+        """Load one numbered page using the current search, filters and order."""
+        if not isinstance(page_number, int) or page_number < 1:
+            raise ValueError("El numero de pagina debe ser un entero positivo.")
+        offset = (page_number - 1) * self.page_size
+        rows, has_more = self._load_page(offset)
+        self.offset = offset
+        return rows, has_more
+
     def _load_page(self, offset=None):
         if offset is None:
             offset = self.offset
@@ -100,6 +109,24 @@ class LibraryService:
         if track is None:
             raise ValueError("La pista seleccionada ya no existe.")
         return self.repository.update_track_metadata(track, {"rating": rating})
+
+    def update_metadata(self, track_id, values):
+        """Persist a manual edit launched from the library without changing audio files."""
+        if not isinstance(track_id, int):
+            raise TypeError("track_id debe ser entero.")
+        if not isinstance(values, dict):
+            raise TypeError("values debe ser un diccionario.")
+        allowed = {"title", "artist", "album", "label", "genre", "bpm", "key", "energy"}
+        patch = {field: value for field, value in values.items() if field in allowed}
+        if not patch:
+            raise ValueError("No hay cambios de metadata.")
+        track = self.repository.get_by_id(track_id)
+        if track is None:
+            raise ValueError("La pista seleccionada ya no existe.")
+        previous = {field: getattr(track, field, None) for field in patch}
+        self.repository.update_track_metadata(track, patch, commit=False)
+        self.repository.record_metadata_edit(track_id, tuple(patch), previous, patch, "manual_library", "applied")
+        return track
 
     def iter_ranking_candidates(self, *, batch_size, filters, excluded_track_ids, cancellation=None):
         """Global read-only source; does not alter current UI pagination state."""

@@ -87,6 +87,7 @@ class PreviewTrackDTO:
     title: str | None = None
     artist: str | None = None
     duration_ms: int | None = None
+    artwork_data: bytes | None = None
 
     def __post_init__(self):
         if not isinstance(self.filepath, str) or not self.filepath.strip():
@@ -95,6 +96,8 @@ class PreviewTrackDTO:
             raise ValueError("track_id debe ser entero no negativo o nulo.")
         if self.duration_ms is not None and (not isinstance(self.duration_ms, int) or isinstance(self.duration_ms, bool) or self.duration_ms < 0):
             raise ValueError("duration_ms debe ser entero no negativo o nulo.")
+        if self.artwork_data is not None and not isinstance(self.artwork_data, bytes):
+            raise ValueError("artwork_data debe ser bytes o nulo.")
 
 
 @dataclass(frozen=True)

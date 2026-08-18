@@ -171,6 +171,13 @@ class RecommendationScoringEngine:
         if genre_reason is None or key_reason is None or bpm_reason is None or energy_reason is None:
             return score
 
+        # Missing genre metadata reduces confidence, but must not erase a
+        # concrete harmonic and tempo match.  Set planning relies on those
+        # deterministic musical signals while its own policy constrains the
+        # energy journey.
+        if "no disponible" in genre_reason.explanation.casefold():
+            return score if key_reason.contribution > 0 and bpm_reason.contribution > 0 else 0
+
         if (
             key_reason.contribution < self.WEIGHTS["key"]
             or bpm_reason.contribution < self.WEIGHTS["bpm"]

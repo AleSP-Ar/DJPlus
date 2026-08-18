@@ -22,12 +22,14 @@ DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
 engine = create_engine(
     DATABASE_URL,
     echo=False,
+    connect_args={"timeout": 30},
 )
 
 
 @event.listens_for(engine, "connect")
 def enable_sqlite_foreign_keys(connection, _):
     connection.execute("PRAGMA foreign_keys=ON")
+    connection.execute("PRAGMA busy_timeout=30000")
 
 SessionLocal = sessionmaker(bind=engine)
 _LOGGER = logging.getLogger("djplus.database")
@@ -38,6 +40,13 @@ def init_database() -> None:
     USER_DATA_PATHS.ensure_directories()
     DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     migrate_legacy_database(LEGACY_DATABASE_PATH, DATABASE_PATH)
+    # SQLite allows one writer at a time.  WAL keeps readers responsive while
+    # imports, playback history and the assistant use separate sessions.
+    # It must be configured once at startup, rather than on every connection.
+    with engine.connect() as connection:
+        connection.exec_driver_sql("PRAGMA journal_mode=WAL")
+        connection.exec_driver_sql("PRAGMA synchronous=NORMAL")
+        connection.exec_driver_sql("PRAGMA busy_timeout=30000")
     _LOGGER.info(
         "Database migration started",
         extra={"event_name": "database_migration_started", "component": "database"},

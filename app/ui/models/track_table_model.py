@@ -1,6 +1,7 @@
 import json
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PySide6.QtGui import QPixmap
 from app.services.key_notation import format_key
 
 
@@ -10,13 +11,18 @@ class TrackTableModel(QAbstractTableModel):
     ]
 
     HEADERS = HEADERS[:3] + ["Sello"] + HEADERS[3:]
+    HEADERS = ["Portada"] + HEADERS
 
-    def __init__(self, tracks=None, load_more=None, has_more=False):
+    EDITABLE_FIELDS = {1: "artist", 2: "title", 3: "album", 4: "label", 5: "genre", 6: "bpm", 7: "key", 8: "energy"}
+
+    def __init__(self, tracks=None, load_more=None, has_more=False, update_metadata=None):
         super().__init__()
         self._tracks = tracks or []
         self._load_more = load_more
         self._has_more = has_more
         self._key_notation = "both"
+        self._artwork_cache = {}
+        self._update_metadata = update_metadata
 
     def rowCount(self, parent=None):
         return len(self._tracks)
@@ -32,17 +38,51 @@ class TrackTableModel(QAbstractTableModel):
     def data(self, index, role):
         if not index.isValid():
             return None
-        if role == Qt.TextAlignmentRole and index.column() == 9:
+        if role == Qt.TextAlignmentRole and index.column() == 10:
             return Qt.AlignCenter
+        track = self._tracks[index.row()]
+        if role == Qt.DecorationRole and index.column() == 0:
+            return self._artwork_for(track)
         if role != Qt.DisplayRole:
             return None
-        track = self._tracks[index.row()]
         values = [
-            track.artist or "", track.title or "", track.album or "", getattr(track, "label", None) or "", track.genre or "",
+            "", track.artist or "", track.title or "", track.album or "", getattr(track, "label", None) or "", track.genre or "",
             track.bpm or "", format_key(track.key, self._key_notation), getattr(track, "energy", None) or "",
             self.format_duration(track.duration), self.format_rating(track.rating),
         ]
         return str(values[index.column()])
+
+    def flags(self, index):
+        # Metadata editing is temporarily disabled until the table editor has
+        # a safe, validated commit flow.  A mouse gesture must never be able
+        # to mutate a track as a side effect of selecting it.
+        return super().flags(index)
+
+    def setData(self, index, value, role=Qt.EditRole):
+        """Block cell commits until inline editing is rebuilt safely."""
+        return False
+
+    @staticmethod
+    def _clean_edit_value(field, value):
+        if field == "bpm":
+            return float(value) if str(value).strip() else None
+        if field == "energy":
+            energy = int(value)
+            if not 0 <= energy <= 100:
+                raise ValueError("energy fuera de rango")
+            return energy
+        return str(value).strip() or None
+
+    def _artwork_for(self, track):
+        identifier = getattr(track, "id", None)
+        if identifier in self._artwork_cache:
+            return self._artwork_cache[identifier]
+        pixmap = QPixmap()
+        data = getattr(track, "artwork_data", None)
+        if isinstance(data, bytes) and data and pixmap.loadFromData(data):
+            pixmap = pixmap.scaled(34, 34, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+        self._artwork_cache[identifier] = pixmap if not pixmap.isNull() else None
+        return self._artwork_cache[identifier]
 
     @staticmethod
     def format_duration(seconds):
@@ -81,13 +121,14 @@ class TrackTableModel(QAbstractTableModel):
     def set_tracks(self, tracks):
         self.beginResetModel()
         self._tracks = tracks
+        self._artwork_cache = {}
         self.endResetModel()
 
     def set_key_notation(self, notation):
         self._key_notation = notation if notation in {"camelot", "musical", "both"} else "both"
         if self._tracks:
-            first = self.index(0, 8)
-            last = self.index(len(self._tracks) - 1, 8)
+            first = self.index(0, 7)
+            last = self.index(len(self._tracks) - 1, 7)
             self.dataChanged.emit(first, last, [Qt.DisplayRole])
 
     def set_page(self, tracks, has_more):

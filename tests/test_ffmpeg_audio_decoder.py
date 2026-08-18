@@ -129,6 +129,14 @@ class FFmpegAudioDecoderTests(unittest.TestCase):
         self.assertEqual(result.status, "completed")
         self.assertAlmostEqual(result.features.duration_seconds, 1.0)
 
+    def test_probe_reads_audio_stream_after_long_metadata(self):
+        long_probe = b"Metadata:\n" + b" tag : value\n" * 120 + _PROBE
+        with tempfile.TemporaryDirectory() as directory:
+            executable = self._fixture(directory, "ffmpeg.exe", b"")
+            mp3 = self._fixture(directory, "fixture.mp3", b"ID3fixture")
+            info = self._decoder(_Factory(probe=long_probe), executable).probe(str(mp3))
+        self.assertEqual((info.sample_rate, info.channels), (8000, 1))
+
     def test_cancellation_timeout_and_safe_stderr_close_the_process(self):
         raw = b"\x00\x00" * 32
         with tempfile.TemporaryDirectory() as directory:
