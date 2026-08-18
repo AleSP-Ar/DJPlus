@@ -1,119 +1,122 @@
-"""Beatport catalog provider using the public OAuth API only."""
-
+"""Resilient Beatport search provider, isolated from recommendation scoring."""
 from __future__ import annotations
-
-import os
+import json
 import re
 import time
 from dataclasses import dataclass
 from typing import Any, Iterable
-from urllib.parse import urlencode
-
+from urllib.parse import quote_plus
+import requests
 from .metadata_candidate_proposal import MetadataCandidateProviderProtocol, MetadataProviderError, MetadataProviderTimeoutError
 from .metadata_candidate_resolver import CandidateDTO
-from .provider_transport import ProviderTransport, TransportErrorDTO, TransportRequestDTO, TransportResponseDTO
-from .discogs_metadata_provider import DiscogsHTTPTransport
 from .track_metadata_editor import TrackMetadataDTO
 
-
 @dataclass(frozen=True)
-class BeatportAPIClient:
-    transport: ProviderTransport
-    access_token: str | None = None
-    timeout_seconds: int = 10
+class BeatportHTTPResponse:
+    text: str
+    status_code: int
 
-    def get(self, path: str, parameters: dict[str, str] | None = None) -> dict[str, Any]:
-        if not self.access_token:
-            return {}
-        url = f"https://api.beatport.com/v4{path}"
-        if parameters:
-            url = f"{url}?{urlencode(parameters)}"
-        response = self.transport.send(TransportRequestDTO(
-            request_id=f"beatport-{int(time.time() * 1000)}", method="GET", url=url,
-            timeout_ms=self.timeout_seconds * 1000,
-            headers={"Accept": "application/json", "Authorization": f"Bearer {self.access_token}"},
-        ))
-        if isinstance(response, TransportErrorDTO):
-            if response.code == "timeout":
-                raise MetadataProviderTimeoutError("Beatport request timed out")
-            raise MetadataProviderError("Beatport transport error")
-        if not isinstance(response, TransportResponseDTO) or response.status_code != 200:
-            status = getattr(response, "status_code", "unknown")
-            raise MetadataProviderError(f"Beatport returned status {status}")
-        if not isinstance(response.json_body, dict):
-            raise MetadataProviderError("Beatport returned invalid JSON")
-        return response.json_body
-
+class BeatportHTTPClient:
+    """requests.Session boundary with polite rate limiting and deterministic injection."""
+    def __init__(self, session=None, timeout_seconds=10, user_agent="DJPlus/1.0 (+https://github.com/AleSP-Ar/DJPlus)", min_interval_seconds=0.8, sleeper=time.sleep, clock=time.monotonic):
+        self.session = session or requests.Session(); self.timeout_seconds = timeout_seconds; self.user_agent = user_agent
+        self.min_interval_seconds = min_interval_seconds; self.sleeper = sleeper; self.clock = clock; self._last_request_at = None
+    def get(self, url, *, accept="text/html,application/xhtml+xml"):
+        if self._last_request_at is not None:
+            remaining = self.min_interval_seconds - (self.clock() - self._last_request_at)
+            if remaining > 0: self.sleeper(remaining)
+        try: response = self.session.get(url, timeout=self.timeout_seconds, headers={"User-Agent": self.user_agent, "Accept": accept})
+        except requests.Timeout as error: raise MetadataProviderTimeoutError("Beatport request timed out") from error
+        except requests.RequestException as error: raise MetadataProviderError("Beatport transport error") from error
+        self._last_request_at = self.clock()
+        if response.status_code != 200: raise MetadataProviderError(f"Beatport returned status {response.status_code}")
+        return BeatportHTTPResponse(response.text, response.status_code)
+    def get_bytes(self, url):
+        try: response = self.session.get(url, timeout=self.timeout_seconds, headers={"User-Agent": self.user_agent, "Accept": "image/avif,image/webp,image/*,*/*"})
+        except requests.RequestException: return None, None
+        if response.status_code != 200 or not response.content: return None, None
+        return bytes(response.content), response.headers.get("Content-Type", "image/jpeg").split(";", 1)[0]
 
 class BeatportMetadataProvider(MetadataCandidateProviderProtocol):
-    """Find a catalog track and expose its Beatport genre and release label."""
-
-    def __init__(self, transport: ProviderTransport | None = None, access_token: str | None = None, timeout_seconds: int = 10):
-        self._client = BeatportAPIClient(
-            transport=transport or DiscogsHTTPTransport(),
-            access_token=access_token if access_token is not None else os.getenv("BEATPORT_ACCESS_TOKEN"),
-            timeout_seconds=timeout_seconds,
-        )
-
+    """Beatport is authoritative only after strict artist/title/mix identity validation."""
+    def __init__(self, client=None, *, session=None, timeout_seconds=10, user_agent="DJPlus/1.0 (+https://github.com/AleSP-Ar/DJPlus)", min_interval_seconds=0.8):
+        self._client = client or BeatportHTTPClient(session, timeout_seconds, user_agent, min_interval_seconds)
     def fetch_candidates(self, current_metadata: TrackMetadataDTO) -> Iterable[CandidateDTO]:
-        if not isinstance(current_metadata, TrackMetadataDTO):
-            raise TypeError("current_metadata must be TrackMetadataDTO")
-        if not self._client.access_token:
-            return ()
-        query = " ".join(part for part in (current_metadata.artist, current_metadata.title) if part and part.strip())
-        if not query:
-            return ()
-        search = self._client.get("/catalog/search/", {"q": query, "type": "tracks", "per_page": "10"})
-        track = self._best_track(self._search_tracks(search), current_metadata)
-        if track is None:
-            return ()
-        track_id = track.get("id")
-        detail = self._client.get(f"/catalog/tracks/{track_id}/") if track_id else track
-        candidate = self._candidate(detail, current_metadata)
-        return (candidate,) if candidate is not None else ()
-
+        if not isinstance(current_metadata, TrackMetadataDTO): raise TypeError("current_metadata must be TrackMetadataDTO")
+        query = " ".join(item.strip() for item in (current_metadata.artist, current_metadata.title) if item and item.strip())
+        if not query: return ()
+        tracks = self._extract_tracks(self._client.get(f"https://www.beatport.com/search?q={quote_plus(query)}").text)
+        match = self._unique_identity_match(tracks, current_metadata)
+        if match is None: return ()
+        artwork_url = self._first_text(match, "image", "image_url", "imageUrl", "cover_url", "coverUrl")
+        artwork_data, artwork_mime = self._client.get_bytes(artwork_url) if artwork_url else (None, None)
+        genre = self._display_value(match.get("genre")); style = self._display_value(match.get("sub_genre") or match.get("subGenre"))
+        label = self._display_value(match.get("label") or self._nested(match, "release", "label"))
+        return (CandidateDTO("beatport", genre or None, [style] if style else [], 1.0, label or None, True, self._supported_values(match, current_metadata, label), artwork_data, artwork_mime, artwork_url),)
+    @classmethod
+    def _extract_tracks(cls, html):
+        for script in re.findall(r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>', html, re.I | re.S):
+            try: tracks = cls._track_nodes(json.loads(script))
+            except json.JSONDecodeError: continue
+            if tracks: return tracks
+        result = []
+        for item in re.findall(r'data-track=["\']([^"\']+)["\']', html, re.I):
+            try: parsed = json.loads(item.replace("&quot;", '"'))
+            except json.JSONDecodeError: continue
+            if isinstance(parsed, dict): result.append(parsed)
+        return result
+    @classmethod
+    def _track_nodes(cls, value):
+        found = []
+        if isinstance(value, dict):
+            if cls._first_text(value, "name", "title") and ("artists" in value or "artist" in value or "artist_name" in value): found.append(value)
+            for child in value.values(): found.extend(cls._track_nodes(child))
+        elif isinstance(value, list):
+            for child in value: found.extend(cls._track_nodes(child))
+        return found
+    @classmethod
+    def _unique_identity_match(cls, tracks, metadata):
+        matches = [track for track in tracks if cls._identity_matches(track, metadata)]
+        unique = {(track.get("id") or (cls._normal(cls._first_text(track, "name", "title")), cls._normal(cls._artist_text(track)), cls._normal(cls._mix_text(track)))): track for track in matches}
+        return next(iter(unique.values())) if len(unique) == 1 else None
+    @classmethod
+    def _identity_matches(cls, track, metadata):
+        wanted_title, wanted_mix = cls._split_title(metadata.title); actual_title, actual_mix = cls._split_title(cls._first_text(track, "name", "title"))
+        actual_mix = cls._normal(cls._first_text(track, "mix_name", "mixName", "mix") or actual_mix)
+        return bool(wanted_title and wanted_title == actual_title and cls._normal(metadata.artist) == cls._normal(cls._artist_text(track)) and wanted_mix == actual_mix)
+    @classmethod
+    def _supported_values(cls, track, metadata, label):
+        values = {"title": cls._first_text(track, "name", "title") or metadata.title, "artist": cls._artist_text(track) or metadata.artist}
+        if track.get("bpm") not in (None, ""): values["bpm"] = float(track["bpm"])
+        key = cls._display_value(track.get("key")); release = track.get("release") if isinstance(track.get("release"), dict) else {}
+        if key: values["key"] = key
+        album = cls._first_text(release, "name", "title")
+        if album: values["album"] = album
+        if label: values["label"] = label
+        return values
     @staticmethod
-    def _search_tracks(payload: dict[str, Any]) -> list[dict[str, Any]]:
-        tracks = payload.get("tracks", payload.get("results", payload.get("data", [])))
-        if isinstance(tracks, dict):
-            tracks = tracks.get("data", tracks.get("results", []))
-        return [item for item in tracks if isinstance(item, dict)] if isinstance(tracks, list) else []
-
+    def _nested(value, *keys):
+        for key in keys:
+            if not isinstance(value, dict): return None
+            value = value.get(key)
+        return value
     @classmethod
-    def _best_track(cls, tracks: list[dict[str, Any]], metadata: TrackMetadataDTO) -> dict[str, Any] | None:
-        expected_title = cls._normal(metadata.title)
-        expected_artist = cls._normal(metadata.artist)
-        ranked = []
-        for track in tracks:
-            title = cls._normal(track.get("name") or track.get("title"))
-            artists = track.get("artists") or track.get("artist_name") or ""
-            artist = cls._normal(" ".join(item.get("name", "") for item in artists) if isinstance(artists, list) else artists)
-            score = (2 if expected_title and expected_title in title else 0) + (2 if expected_artist and expected_artist in artist else 0)
-            if score:
-                ranked.append((score, track))
-        return max(ranked, key=lambda item: item[0])[1] if ranked else None
-
-    @classmethod
-    def _candidate(cls, track: dict[str, Any], metadata: TrackMetadataDTO) -> CandidateDTO | None:
-        genre = track.get("genre") or {}
-        sub_genre = track.get("sub_genre") or {}
-        release = track.get("release") or {}
-        label = release.get("label") or track.get("label") or {}
-        genre_name = genre.get("name") if isinstance(genre, dict) else str(genre or "")
-        sub_genre_name = sub_genre.get("name") if isinstance(sub_genre, dict) else str(sub_genre or "")
-        label_name = label.get("name") if isinstance(label, dict) else str(label or "")
-        if not any((genre_name, sub_genre_name, label_name)):
-            return None
-        confidence = 0.95 if cls._matches(track, metadata) else 0.70
-        return CandidateDTO("beatport", genre_name or None, [sub_genre_name] if sub_genre_name else [], confidence, label_name or None)
-
-    @classmethod
-    def _matches(cls, track: dict[str, Any], metadata: TrackMetadataDTO) -> bool:
-        title = cls._normal(track.get("name") or track.get("title"))
-        artists = track.get("artists") or track.get("artist_name") or ""
-        artist = cls._normal(" ".join(item.get("name", "") for item in artists) if isinstance(artists, list) else artists)
-        return bool(cls._normal(metadata.title) in title and cls._normal(metadata.artist) in artist)
-
+    def _artist_text(cls, track):
+        artists = track.get("artists") or track.get("artist") or track.get("artist_name") or ""
+        return ", ".join(cls._display_value(item) for item in artists if cls._display_value(item)) if isinstance(artists, list) else cls._display_value(artists)
     @staticmethod
-    def _normal(value: object) -> str:
-        return re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold()).strip()
+    def _display_value(value): return str((value.get("name") or value.get("title") or "") if isinstance(value, dict) else value or "").strip()
+    @classmethod
+    def _first_text(cls, value, *keys):
+        for key in keys:
+            text = cls._display_value(value.get(key) if isinstance(value, dict) else None)
+            if text: return text
+        return ""
+    @classmethod
+    def _mix_text(cls, value): return cls._first_text(value, "mix_name", "mixName", "mix") or cls._split_title(cls._first_text(value, "name", "title"))[1]
+    @classmethod
+    def _split_title(cls, value):
+        match = re.match(r"^(.*?)(?:\s*[\(\[]([^\)\]]+)[\)\]])?$", str(value or "").strip())
+        return cls._normal(match.group(1) if match else value), cls._normal(match.group(2) if match and match.group(2) else "")
+    @staticmethod
+    def _normal(value): return re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold()).strip()

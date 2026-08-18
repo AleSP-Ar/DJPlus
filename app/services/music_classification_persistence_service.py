@@ -33,6 +33,8 @@ class ClassificationSelectionDTO:
     secondary_genres: bool = True
     styles: bool = True
     label: bool = True
+    core_metadata: bool = True
+    artwork: bool = True
 
 
 class MusicClassificationPersistenceService:
@@ -64,6 +66,14 @@ class MusicClassificationPersistenceService:
             values["styles_json"] = self._serialize_styles(proposal.proposed_styles)
         if selection.label and proposal.proposed_label:
             values["label"] = proposal.proposed_label
+        if selection.core_metadata:
+            values.update(dict(proposal.metadata_values))
+        if selection.artwork and proposal.artwork_data:
+            values.update({
+                "artwork_data": proposal.artwork_data,
+                "artwork_mime": proposal.artwork_mime,
+                "artwork_source": proposal.source or "provider",
+            })
 
         with self._open_unit() as uow:
             track = uow.tracks.get_by_id(proposal.current_metadata.track_id)
@@ -77,7 +87,7 @@ class MusicClassificationPersistenceService:
                 tuple(values.keys()),
                 previous,
                 values,
-                "classification",
+            proposal.source or "classification",
                 "applied",
                 commit=False,
             )
@@ -140,7 +150,7 @@ class MusicClassificationPersistenceService:
     def _snapshot(self, track: Any) -> dict[str, Any]:
         return {
             field: getattr(track, field)
-            for field in ("genre", "primary_genre_confidence", "secondary_genres_json", "styles_json", "label")
+            for field in ("title", "artist", "album", "label", "genre", "bpm", "key", "artwork_data", "artwork_mime", "artwork_source", "primary_genre_confidence", "secondary_genres_json", "styles_json")
             if hasattr(track, field)
         }
 

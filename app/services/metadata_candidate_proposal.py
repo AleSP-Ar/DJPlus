@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable, Iterable, Optional, Tuple
+from typing import Protocol, runtime_checkable, Iterable, Optional, Tuple, Any
 
 from .metadata_candidate_resolver import MetadataCandidateResolver, CandidateDTO
 from .track_metadata_editor import TrackMetadataDTO
@@ -42,6 +42,14 @@ class MetadataProposalDTO:
     selectable_fields: Tuple[str, ...] = ("genre", "secondary_genres", "styles", "label")
     proposed_label: Optional[str] = None
     proposed_label_confidence: float = 0.0
+    source: Optional[str] = None
+    identity_verified: bool = False
+    auto_apply: bool = False
+    metadata_values: Tuple[Tuple[str, Any], ...] = ()
+    artwork_data: bytes | None = None
+    artwork_mime: str | None = None
+    artwork_url: str | None = None
+    deferred_fields: Tuple[str, ...] = ()
 
 
 class MetadataCandidateProposalService:
@@ -95,6 +103,14 @@ class MetadataCandidateProposalService:
             key=lambda item: (-item[0], item[1].casefold()),
         )
 
+        authoritative = next(
+            (
+                candidate for candidate in candidates
+                if candidate.source.casefold() == "beatport" and candidate.identity_verified
+            ),
+            None,
+        )
+        metadata_values = tuple((key, value) for key, value in (authoritative.metadata_values or {}).items()) if authoritative else ()
         return MetadataProposalDTO(
             current_metadata=current_metadata,
             proposed_primary_genre_id=result.primary_genre_id or (fallback[0] if fallback else None),
@@ -110,6 +126,14 @@ class MetadataCandidateProposalService:
             warnings=tuple(warnings + result.warnings),
             proposed_label=labels[0][1] if labels else None,
             proposed_label_confidence=labels[0][0] if labels else 0.0,
+            source=authoritative.source if authoritative else None,
+            identity_verified=bool(authoritative),
+            auto_apply=bool(authoritative),
+            metadata_values=metadata_values,
+            artwork_data=authoritative.artwork_data if authoritative else None,
+            artwork_mime=authoritative.artwork_mime if authoritative else None,
+            artwork_url=authoritative.artwork_url if authoritative else None,
+            deferred_fields=("release", "release_date", "mix_version") if authoritative else (),
         )
 
     @staticmethod

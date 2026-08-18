@@ -34,8 +34,12 @@ class CombinedMetadataProposalService:
         if not isinstance(track_metadata, TrackMetadataDTO):
             raise TypeError("track_metadata must be TrackMetadataDTO")
 
-        providers = (self._beatport_provider, self._musicbrainz_provider, self._discogs_provider)
-        return self._proposal_service.create_proposal(track_metadata, providers)
+        # Beatport's verified identity is authoritative.  Fall back only when
+        # it is unavailable, ambiguous, or fails inside the proposal boundary.
+        beatport_proposal = self._proposal_service.create_proposal(track_metadata, (self._beatport_provider,))
+        if beatport_proposal.identity_verified:
+            return beatport_proposal
+        return self._proposal_service.create_proposal(track_metadata, (self._musicbrainz_provider, self._discogs_provider))
 
 
 def create_metadata_proposal(

@@ -48,7 +48,7 @@ class TrackRepository:
 
     def update_track_metadata(self, track, values, commit=True):
         """Apply a validated user-metadata patch inside the caller UnitOfWork."""
-        for field in ("title", "artist", "album", "label", "genre", "rating", "bpm", "key", "energy", "primary_genre_confidence", "secondary_genres_json", "styles_json"):
+        for field in ("title", "artist", "album", "label", "genre", "rating", "bpm", "key", "energy", "artwork_data", "artwork_mime", "artwork_source", "primary_genre_confidence", "secondary_genres_json", "styles_json"):
             if field in values:
                 setattr(track, field, values[field])
         self._finish(commit)

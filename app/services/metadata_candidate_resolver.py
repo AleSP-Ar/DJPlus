@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Mapping
 from collections import defaultdict
 
 from .genre_normalizer import GenreNormalizer
@@ -15,6 +15,13 @@ class CandidateDTO:
     style_terms: List[str]
     confidence: float  # 0..1
     label: Optional[str] = None
+    # Provider-only evidence stays outside recommendation scoring.  The
+    # resolver still consumes only normalized genre/style terms.
+    identity_verified: bool = False
+    metadata_values: Mapping[str, Any] | None = None
+    artwork_data: bytes | None = None
+    artwork_mime: str | None = None
+    artwork_url: str | None = None
 
 
 @dataclass

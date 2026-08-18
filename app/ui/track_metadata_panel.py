@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 
 from PySide6.QtCore import QObject, QThread, QUrl, Signal, Slot
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QPixmap
 from urllib.parse import urlencode
 from PySide6.QtWidgets import QCheckBox, QDoubleSpinBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSpinBox, QTextEdit, QVBoxLayout, QWidget
 
@@ -87,6 +87,7 @@ class TrackMetadataPanel(QWidget):
         self.output = QTextEdit(); self.output.setReadOnly(True); self.output.setPlaceholderText("La vista previa y los errores aparecerán aquí."); self.output.setMinimumHeight(150); result.layout().addWidget(self.output); layout.addWidget(result)
 
         proposal_section = self._section("6 · Metadata externa")
+        self.cover_preview = QLabel("Sin portada disponible"); self.cover_preview.setObjectName("metadataCoverPreview"); self.cover_preview.setAccessibleName("Vista previa de portada externa"); self.cover_preview.setMinimumSize(120, 120); self.cover_preview.setScaledContents(False); proposal_section.layout().addWidget(self.cover_preview)
         proposal_controls = QHBoxLayout(); self.external_button = QPushButton("Buscar metadata externa"); self.external_button.setObjectName("metadataPrimary"); self.external_button.setAccessibleName("Buscar metadata externa"); self.external_button.clicked.connect(self.search_external_metadata); self.beatport_button = QPushButton("Buscar en Beatport"); self.beatport_button.setAccessibleName("Buscar la pista actual en Beatport"); self.beatport_button.setToolTip("Abre Beatport para verificar la metadata de esta pista."); self.beatport_button.clicked.connect(self.open_beatport_search); proposal_controls.addWidget(self.external_button); proposal_controls.addWidget(self.beatport_button); proposal_controls.addStretch(1); proposal_section.layout().addLayout(proposal_controls)
         self.proposal_output = QTextEdit(); self.proposal_output.setReadOnly(True); self.proposal_output.setMinimumHeight(120); self.proposal_output.setPlaceholderText("La propuesta externa aparecerá aquí."); self.proposal_output.setAccessibleName("Resultado de metadata externa"); proposal_section.layout().addWidget(self.proposal_output)
 
@@ -195,6 +196,21 @@ class TrackMetadataPanel(QWidget):
         self.undo_external_button.setEnabled(True)
         self.metadata_changed.emit()
 
+    def _apply_authoritative_metadata(self, proposal):
+        persistence = self._persistence_service or self._default_persistence_service()
+        result = persistence.apply_confirmed_proposal(proposal, confirmation=True, selection=ClassificationSelectionDTO())
+        values = result.get("values", {}) if isinstance(result, dict) else {}
+        for field, widget in (("title", self.title), ("artist", self.artist), ("album", self.album), ("label", self.label), ("key", self.key)):
+            if field in values:
+                widget.setText(values[field] or "")
+                self._manual_metadata_baseline[field] = widget.text()
+        if "bpm" in values:
+            self.bpm.setValue(values["bpm"] or 0)
+            self._manual_metadata_baseline["bpm"] = self.bpm.value()
+        self.undo_external_button.setEnabled(True)
+        self.metadata_changed.emit()
+        return result
+
     def cancel_external_metadata(self):
         self._proposal_cancelled = True
         if self._proposal_thread is not None:
@@ -238,6 +254,12 @@ class TrackMetadataPanel(QWidget):
         self.proposal = proposal
         self.external_proposal_ready.emit(proposal)
         self._render_external_proposal(proposal)
+        if proposal.auto_apply and proposal.identity_verified:
+            try:
+                self._apply_authoritative_metadata(proposal)
+                self.proposal_output.append("Beatport verificado: metadata aplicada automáticamente. Podés deshacerla.")
+            except Exception as error:
+                self._render_external_error(str(error))
 
     @Slot(str)
     def _handle_proposal_error(self, error):
@@ -270,6 +292,11 @@ class TrackMetadataPanel(QWidget):
             return
         lines = []
         if self._proposal_has_content(proposal):
+            self._render_cover_preview(proposal)
+            if proposal.source:
+                lines.append(f"Fuente: {proposal.source}")
+            if proposal.identity_verified:
+                lines.append("Identidad Beatport verificada (artista, título y mix).")
             lines.append(f"Género actual: {proposal.current_metadata.genre or 'N/A'}")
             lines.append(f"Género propuesto: {proposal.proposed_primary_genre_label or proposal.proposed_primary_genre_id or 'N/A'}")
             lines.append(f"Confianza: {proposal.proposed_primary_confidence:.2f}")
@@ -284,6 +311,8 @@ class TrackMetadataPanel(QWidget):
                 lines.append("Unknown: " + ", ".join(proposal.unknown_terms))
             if proposal.warnings:
                 lines.append("Warnings: " + "; ".join(proposal.warnings))
+            if proposal.deferred_fields:
+                lines.append("Diferido sin campo persistente: " + ", ".join(proposal.deferred_fields))
             self._set_external_apply_state(self._proposal_has_applicable_fields(proposal))
         else:
             lines.append("Sin coincidencias")
@@ -291,6 +320,18 @@ class TrackMetadataPanel(QWidget):
                 lines.append("Warnings: " + "; ".join(proposal.warnings))
             self._set_external_apply_state(False)
         self.proposal_output.setPlainText("\n".join(lines))
+
+    def _render_cover_preview(self, proposal):
+        if not proposal.artwork_data:
+            self.cover_preview.setText("Sin portada disponible")
+            self.cover_preview.setPixmap(QPixmap())
+            return
+        pixmap = QPixmap()
+        if not pixmap.loadFromData(proposal.artwork_data):
+            self.cover_preview.setText("Portada no compatible")
+            return
+        self.cover_preview.setPixmap(pixmap.scaled(120, 120))
+        self.cover_preview.setText("")
 
     def _render_external_error(self, error):
         self.proposal_output.setPlainText(f"Error: {error}")
